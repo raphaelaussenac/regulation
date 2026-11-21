@@ -28,9 +28,18 @@ C'est important : sur iPhone, les données d'un site seulement ouvert dans Safar
 
 Au premier lancement, l'application contient les 10 techniciens d'exemple de la version d'origine : remplacez-les depuis Gestion.
 
+## Versions
+
+Le numéro de version s'affiche en haut de l'application, à côté du nom de l'entreprise (par exemple « v0.1.0 »). Il est défini à un seul endroit : le fichier `version.js`. Chaque version publiée porte un tag du même nom sur GitHub (`v0.1.0`…), et ses changements sont décrits dans `CHANGELOG.md`.
+
+Numérotation : `MAJEUR.MINEUR.CORRECTIF`. Une correction augmente le dernier chiffre (0.1.0 → 0.1.1), une nouvelle fonction celui du milieu (0.1.1 → 0.2.0).
+
 ## Mettre à jour l'application
 
-Remplacez les fichiers modifiés dans le dépôt GitHub. Changez aussi la ligne `const VERSION = …` en haut de `sw.js` (une nouvelle date suffit). L'iPhone récupère la nouvelle version au lancement suivant ; les données ne sont pas touchées.
+1. Changez le numéro dans `version.js` et ajoutez une entrée dans `CHANGELOG.md`.
+2. Remplacez les fichiers modifiés dans le dépôt GitHub (glisser-déposer dans « Add file › Upload files », puis « Commit changes »).
+3. Créez le tag de la version : sur GitHub, « Releases › Draft a new release », tag `vX.Y.Z` sur la branche `main`, puis « Publish release ».
+4. Sur l'iPhone, fermez l'application et rouvrez-la : le numéro affiché en haut doit être le nouveau. Les données ne sont pas touchées.
 
 ## Services utilisés
 

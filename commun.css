@@ -238,8 +238,11 @@ h1 { margin: 0; font: 700 34px/1 var(--font-sign); letter-spacing: -.01em; text-
    La barre passe sous l'heure et la batterie ; les marges suivent l'encoche et la barre d'accueil. */
 html { -webkit-text-size-adjust: 100%; }
 body { -webkit-tap-highlight-color: transparent; }
+/* La barre reste en haut pendant le défilement. Sous l'heure et la batterie, une marge
+   supplémentaire l'éloigne du voile flou qu'iOS dessine en haut de l'écran. */
 .barre {
-  padding-top: max(8px, env(safe-area-inset-top));
+  position: sticky; top: 0; z-index: 1100;
+  padding-top: calc(env(safe-area-inset-top, 0px) + 10px);
   padding-left: max(20px, env(safe-area-inset-left));
   padding-right: max(20px, env(safe-area-inset-right));
 }
@@ -247,7 +250,9 @@ body { -webkit-tap-highlight-color: transparent; }
 .fenetre { max-height: calc(100dvh - 40px); overflow: auto; overscroll-behavior: contain; }
 @media (max-width: 600px) {
   .barre { padding-left: max(16px, env(safe-area-inset-left)); padding-right: max(16px, env(safe-area-inset-right)); }
-  .barre__nav a { padding: 12px 10px 9px; }
+  .barre { padding-bottom: 6px; row-gap: 2px; }
+  .barre__nav { margin-left: -10px; }
+  .barre__nav a { padding: 12px 10px 10px; font-size: 16px; }
   .fenetre__formulaire { padding: 20px 18px 16px; }
   .fenetre__actions .bouton { flex: 1; }
 }
