@@ -53,6 +53,7 @@
 .statut { font-size: 14px; }
 .statut--ok { color: var(--sign-text); font-weight: 500; }
 .statut--absent { color: var(--alert); font-weight: 600; }
+.statut--temp { color: var(--temp-text); font-weight: 600; }
 .puce--grande { font-size: 13px; padding: 4px 8px 3px; }
 
 .parametres {

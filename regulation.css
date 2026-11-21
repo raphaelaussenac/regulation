@@ -69,16 +69,42 @@ html, body { height: 100%; }
   color: inherit;
 }
 .panneau .puces { margin-top: 6px; }
-/* Position temporaire : écrite en gras, au-dessus du point de départ habituel. */
-.panneau__temp { font-size: 14px; font-weight: 600; }
-.panneau__actions { display: flex; flex-wrap: wrap; gap: 0 18px; margin-top: 6px; }
-.panneau__action {
-  justify-self: start;
-  min-height: 36px; padding: 4px 0;
-  border: 0; background: none; color: inherit;
-  font: 600 14px/1.2 var(--font-text);
-  text-decoration: underline; text-underline-offset: 3px;
+/* Position actuelle du technicien et, à côté, le bouton qui la change. */
+.position { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin-top: 3px; }
+.position__lieu { font-size: 15px; }
+.bouton-position {
+  min-height: 36px; padding: 7px 12px 6px;
+  font: 600 14px/1 var(--font-sign); letter-spacing: .03em;
+  color: inherit; background: transparent;
+  border: 1.5px solid currentColor; border-radius: 6px;
   cursor: pointer;
+}
+.bouton-position:hover { background: color-mix(in srgb, currentColor 10%, transparent); }
+.position--edition { width: 100%; flex-wrap: nowrap; }
+.position__combo { flex: 1 1 auto; min-width: 0; }
+.position__champ {
+  width: 100%; padding: 9px 10px;
+  font: 500 16px/1.2 var(--font-text);
+  color: var(--ink); background: var(--surface);
+  border: 2px solid var(--temp); border-radius: 6px;
+}
+.position__champ:focus { outline: none; box-shadow: 0 0 0 4px color-mix(in srgb, var(--temp) 30%, transparent); }
+
+/* Vignette d'un technicien en position temporaire : cadre et fond ambre, étiquette. */
+.panneau--temp {
+  --bg: var(--temp-bg);
+  box-shadow: inset 0 0 0 3px var(--bg), inset 0 0 0 6px var(--temp), 0 1px 3px rgb(0 0 0 / .14);
+}
+.panneau--temp.panneau--proche {
+  --bg: var(--sign);
+  box-shadow: inset 0 0 0 6px var(--temp), 0 1px 3px rgb(0 0 0 / .14);
+}
+.panneau--temp .position__lieu { font-weight: 700; color: var(--temp-text); }
+.panneau--temp.panneau--proche .position__lieu { color: inherit; }
+.panneau__badge {
+  justify-self: start; margin-bottom: 4px; padding: 4px 7px 3px;
+  font: 700 11px/1 var(--font-sign); letter-spacing: .1em; text-transform: uppercase;
+  color: #FFFFFF; background: var(--temp); border-radius: 3px;
 }
 .panneau__dist { display: grid; justify-items: end; gap: 4px; align-self: start; padding-top: 4px; text-align: right; white-space: nowrap; }
 .panneau__km { font: 700 25px/1 var(--font-sign); font-variant-numeric: tabular-nums; }
@@ -138,6 +164,7 @@ html, body { height: 100%; }
   border-radius: 4px;
   box-shadow: inset 0 0 0 2px var(--bg), inset 0 0 0 3.5px var(--fg), 0 1px 4px rgb(0 0 0 / .35);
 }
+.pin--temp .pin__panneau { --bg: var(--map-temp-bg); --fg: var(--map-temp); }
 .pin--proche .pin__panneau { --bg: var(--map-sign); --fg: var(--map-paper); }
 .pin--client .pin__panneau { --bg: var(--map-ink); --fg: var(--map-paper); }
 .pin--indispo { opacity: .5; }

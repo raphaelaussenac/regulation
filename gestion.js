@@ -65,7 +65,7 @@ function disponibilite(t) {
 // Position temporaire en cours, réglée depuis la Régulation.
 function lignePositionTemporaire(t) {
   const p = positionTemporaire(t);
-  return p ? `<span class="statut statut--absent tableau__detail">Position temporaire : ${esc(p.adresse || p.ville)}</span>` : '';
+  return p ? `<span class="statut statut--temp tableau__detail">Position temporaire : ${esc(p.adresse || p.ville)}</span>` : '';
 }
 
 // ─── Rendus ───────────────────────────────────────────────────────

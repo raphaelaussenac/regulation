@@ -2,7 +2,7 @@
 
 Une application web qui s'installe sur l'écran d'accueil de l'iPhone. Quand un client appelle, vous choisissez sa commune, la nature de la visite (dépannage ou entretien) et le type d'intervention : les techniciens disponibles sont classés par distance par la route.
 
-- **Régulation** : carte, classement des techniciens, trajets, appel du technicien d'un toucher, position temporaire d'un technicien (bouton « Changer de position » sur sa vignette).
+- **Régulation** : carte, classement des techniciens, trajets, appel du technicien d'un toucher, position temporaire d'un technicien (bouton « Changer » à côté de sa position, sur sa vignette ; effacée au changement de nature de visite ou de type d'intervention).
 - **Gestion** : techniciens, leur point de départ et ce qu'ils font en dépannage et en entretien, absences, types d'intervention et durée d'un entretien, nom de l'entreprise et département, sauvegarde.
 
 ## Où sont les données ?

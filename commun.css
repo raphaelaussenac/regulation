@@ -21,6 +21,12 @@
   --map-off: #E3E6E4;
   --map-bg: #DDE2DE;
   --map-hover: #F2F4F2;
+  /* Position temporaire d'un technicien : ambre, comme la signalisation de chantier. */
+  --temp: #B45309;
+  --temp-bg: #FDF0D5;
+  --temp-text: #8A3F06;
+  --map-temp: #B45309;
+  --map-temp-bg: #FDF0D5;
   --font-sign: "Barlow Semi Condensed", "Arial Narrow", "Helvetica Neue", Arial, sans-serif;
   --font-text: "Barlow", "Helvetica Neue", Arial, sans-serif;
   color-scheme: light;
@@ -40,6 +46,9 @@
     --bar-bg: #070B09;
     --bar-fg: #E3EAE5;
     --bar-accent: #4CC38A;
+    --temp: #E39A2D;
+    --temp-bg: #33260F;
+    --temp-text: #F2B35A;
     color-scheme: dark;
   }
 }

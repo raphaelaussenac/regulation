@@ -1,5 +1,5 @@
 // Régulation : classe les techniciens disponibles par distance routière jusqu'à la commune du client.
-import { $, esc, api, normaliser, barre, dateDuJour, fmtDate, ouvrirFenetre, annoncer, autocompleteAdresse, positionTemporaire, centreDuContour } from './commun.js';
+import { $, esc, api, normaliser, barre, dateDuJour, fmtDate, annoncer, autocompleteAdresse, positionTemporaire, centreDuContour } from './commun.js';
 
 const [moi, donneesServeur, geo] = await Promise.all([
   api('/api/moi'),
@@ -18,6 +18,7 @@ function avecPositionsDuJour(d) {
   };
 }
 let D = avecPositionsDuJour(donneesServeur); // paramètres, interventions, techniciens, absences
+const centreDepartement = centreDuContour(geo?.contour); // favorise les adresses proches dans la recherche
 
 const champ = $('commune');
 const boutonEffacer = $('effacer');
@@ -224,6 +225,7 @@ const etatPage = {
   trajets: null,     // Map identifiant de technicien → trajet
   service: null,     // service qui a calculé les trajets (null = vol d'oiseau)
   chargement: false,
+  edition: null,     // identifiant du technicien dont la position est en cours de saisie
 };
 let jourAffiche = dateDuJour();
 
@@ -265,23 +267,31 @@ function ligneDispo(l, rang) {
     ? `<a class="panneau__tel" href="tel:${esc(t.tel.replace(/[^\d+]/g, ''))}">${esc(t.tel)}</a>`
     : '';
   const temp = t.temporaire;
-  const base = temp
-    ? `<span class="panneau__temp">Position temporaire : ${esc(temp.adresse || temp.ville)}</span>
-       <span class="panneau__base">Habituellement : ${esc(t.ville)}</span>`
-    : `<span class="panneau__base">${esc(t.ville)}</span>`;
-  const action = `<span class="panneau__actions">
-      <button type="button" class="panneau__action" data-position="${esc(t.id)}">${temp ? 'Modifier la position' : 'Changer de position'}</button>
-      ${temp ? `<button type="button" class="panneau__action" data-retour="${esc(t.id)}">Revenir à la position habituelle</button>` : ''}
-    </span>`;
-  return `<li class="panneau${proche ? ' panneau--proche' : ''}" data-id="${esc(l.id)}">
+  // Position actuelle et, juste à côté, le bouton qui la change : il devient un champ de recherche d'adresse.
+  const position = etatPage.edition === t.id
+    ? `<span class="position position--edition">
+        <span class="combo position__combo">
+          <input id="position-${esc(t.id)}" class="position__champ" autocomplete="off" spellcheck="false" enterkeyhint="search"
+                 placeholder="Nouvelle adresse ou commune" aria-label="Nouvelle position de ${esc(t.nom)}"
+                 role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="position-liste-${esc(t.id)}">
+          <ul id="position-liste-${esc(t.id)}" class="suggestions" role="listbox" aria-label="Adresses proposées" hidden></ul>
+        </span>
+        <button type="button" class="bouton-position" data-annuler-position="${esc(t.id)}">Annuler</button>
+      </span>`
+    : `<span class="position">
+        <span class="position__lieu">${esc(temp ? temp.adresse || temp.ville : t.ville)}</span>
+        <button type="button" class="bouton-position" data-position="${esc(t.id)}">Changer</button>
+        ${temp ? `<button type="button" class="bouton-position" data-retour="${esc(t.id)}">Revenir à ${esc(t.ville)}</button>` : ''}
+      </span>`;
+  return `<li class="panneau${proche ? ' panneau--proche' : ''}${temp ? ' panneau--temp' : ''}" data-id="${esc(l.id)}">
     ${resultat ? `<span class="panneau__rang" aria-hidden="true">${rang + 1}</span>` : ''}
     <span class="panneau__qui">
       ${proche ? '<span class="panneau__mention">Le plus proche</span>' : ''}
+      ${temp ? '<span class="panneau__badge">Position temporaire</span>' : ''}
       <span class="panneau__nom">${esc(t.nom)}</span>
-      ${base}
+      ${position}
       ${tel}
       ${puces(t)}
-      ${action}
     </span>
     <span class="panneau__dist">${dist}</span>
   </li>`;
@@ -316,6 +326,7 @@ function rendreListe() {
 
   liste.innerHTML = classement.dispos.map(ligneDispo).join('');
   listeIndispos.innerHTML = classement.indispos.map(ligneIndispo).join('');
+  brancherEdition();
   blocIndispos.hidden = !classement.indispos.length;
 
   if (!D.techniciens.length) {
@@ -472,7 +483,7 @@ function construireMarqueurs() {
   for (const m of marqueurs.values()) m.remove();
   marqueurs.clear();
   for (const t of D.techniciens) {
-    const m = L.marker([t.lat, t.lon], { icon: icone(t.nom, 'pin--tech'), title: `${t.nom} · ${t.temporaire ? `${t.temporaire.ville} (position temporaire)` : t.ville}`, keyboard: false, riseOnHover: true })
+    const m = L.marker([t.lat, t.lon], { icon: icone(t.nom, t.temporaire ? 'pin--tech pin--temp' : 'pin--tech'), title: `${t.nom} · ${t.temporaire ? `${t.temporaire.ville} (position temporaire)` : t.ville}`, keyboard: false, riseOnHover: true })
       .on('mouseover', () => mettreEnAvant(t.id))
       .on('mouseout', () => mettreEnAvant(null))
       .addTo(carte);
@@ -609,20 +620,24 @@ function reinitialiser() {
   champ.focus();
 }
 
-choixMode.addEventListener('change', () => {
+// Changer la nature de la visite ou le type d'intervention efface toutes les positions temporaires :
+// chaque nouvel appel repart des points de départ habituels.
+choixMode.addEventListener('change', async () => {
   remplirTypes();
-  afficher({ cadrer: true });
+  etatPage.type = choixType.value;
+  if (!(await effacerPositionsTemporaires())) afficher({ cadrer: true });
 });
 
-choixType.addEventListener('change', () => {
+choixType.addEventListener('change', async () => {
   etatPage.type = choixType.value;
-  afficher({ cadrer: true });
+  if (!(await effacerPositionsTemporaires())) afficher({ cadrer: true });
 });
 
 // ─── Mise à jour pendant la journée ───────────────────────────────
 // La page reste souvent ouverte toute la journée : on récupère les changements faits dans Gestion
 // (techniciens, absences, interventions) quand on revient sur l'onglet et toutes les 5 minutes.
 async function rafraichir() {
+  if (etatPage.edition) return; // une position est en cours de saisie : on ne redessine pas la liste
   let nouvelles;
   try {
     nouvelles = avecPositionsDuJour(await api('/api/donnees'));
@@ -655,10 +670,10 @@ document.addEventListener('visibilitychange', () => {
 setInterval(() => { if (document.visibilityState === 'visible') verifier(); }, 5 * 60000);
 
 // ─── Position temporaire d'un technicien ──────────────────────────
-// Le bouton de chaque vignette : le technicien est ailleurs aujourd'hui (ou jusqu'à une date) ;
-// le classement part de là, puis de nouveau de son point de départ habituel une fois la date passée.
-const centreDepartement = centreDuContour(geo?.contour);
-
+// « Changer », à côté de la position du technicien, devient un champ de recherche d'adresse.
+// L'adresse choisie devient sa position temporaire : le classement part de là jusqu'au retour
+// à sa position habituelle (bouton « Revenir à … ») ou jusqu'au prochain changement de nature
+// de visite ou de type d'intervention.
 async function rechargerEquipe() {
   D = avecPositionsDuJour(await api('/api/donnees'));
   construireMarqueurs();
@@ -667,43 +682,39 @@ async function rechargerEquipe() {
   else afficher();
 }
 
-function changerPosition(t) {
-  const temp = t.temporaire;
-  let position = temp ? { ville: temp.ville, adresse: temp.adresse, lat: temp.lat, lon: temp.lon } : null;
-  ouvrirFenetre({
-    titre: `Position de ${t.nom}`,
-    corps: `
-      <p>Point de départ habituel : <strong>${esc(t.adresse || t.ville)}</strong>. Le classement partira de la position ci-dessous jusqu’à ce que vous touchiez « Revenir à la position habituelle » sur sa vignette.</p>
-      <div class="champ">
-        <label for="f-position">Position temporaire</label>
-        <div class="combo">
-          <input id="f-position" autocomplete="off" spellcheck="false" placeholder="Adresse ou commune" value="${esc(temp ? temp.adresse || temp.ville : '')}"
-                 enterkeyhint="search" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="f-position-liste">
-          <ul id="f-position-liste" class="suggestions" role="listbox" aria-label="Adresses proposées" hidden></ul>
-        </div>
-        <p id="f-position-aide" class="aide"></p>
-      </div>
-`,
-    apresOuverture(fenetre) {
-      const aide = fenetre.querySelector('#f-position-aide');
-      const decrire = () => {
-        aide.textContent = position
-          ? `Position retenue : ${position.adresse || `${position.ville} (centre de la commune)`}`
-          : 'Tapez une adresse ou une commune, puis choisissez-la dans la liste.';
-      };
-      decrire();
-      autocompleteAdresse(fenetre.querySelector('#f-position'), fenetre.querySelector('#f-position-liste'), choix => {
-        position = choix;
-        decrire();
-      }, () => centreDepartement);
-    },
-    async valider() {
-      if (!position) throw new Error('Position temporaire : choisissez une adresse ou une commune dans la liste proposée.');
-      await api(`/api/techniciens/${t.id}/position`, { methode: 'PUT', corps: position });
-      await rechargerEquipe();
-      annoncer(`Position temporaire de ${t.nom} : ${position.ville}.`);
-    },
+function brancherEdition() {
+  const t = etatPage.edition && D.techniciens.find(x => x.id === etatPage.edition);
+  const champ = t && $(`position-${t.id}`);
+  if (!champ) return;
+  const boite = $(`position-liste-${t.id}`);
+  autocompleteAdresse(champ, boite, choix => { if (choix) enregistrerPosition(t, choix); }, () => centreDepartement);
+  champ.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && boite.hidden) fermerEdition();
   });
+  champ.focus();
+}
+
+function ouvrirEdition(t) {
+  etatPage.edition = t.id;
+  rendreListe();
+}
+
+function fermerEdition() {
+  etatPage.edition = null;
+  rendreListe();
+}
+
+async function enregistrerPosition(t, choix) {
+  etatPage.edition = null;
+  try {
+    await api(`/api/techniciens/${t.id}/position`, { methode: 'PUT', corps: choix });
+  } catch (e) {
+    annoncer(e.message);
+    rendreListe();
+    return;
+  }
+  await rechargerEquipe();
+  annoncer(`Position temporaire de ${t.nom} : ${choix.ville}.`);
 }
 
 async function revenirPositionHabituelle(t) {
@@ -714,15 +725,33 @@ async function revenirPositionHabituelle(t) {
     return;
   }
   await rechargerEquipe();
-  annoncer(`${t.nom} repart de son point de départ habituel (${t.ville}).`);
+  annoncer(`${t.nom} repart de ${t.ville}, sa position habituelle.`);
+}
+
+// Renvoie vrai si des positions temporaires ont été effacées (le classement est alors recalculé).
+async function effacerPositionsTemporaires() {
+  etatPage.edition = null;
+  if (!D.techniciens.some(t => t.temporaire)) return false;
+  try {
+    const { n } = await api('/api/positions-temporaires', { methode: 'DELETE' });
+    await rechargerEquipe();
+    annoncer(n > 1 ? `${n} positions temporaires effacées.` : 'Position temporaire effacée.');
+    return true;
+  } catch (e) {
+    annoncer(e.message);
+    return false;
+  }
 }
 
 blocClassement.addEventListener('click', e => {
-  const b = e.target.closest('[data-position], [data-retour]');
-  const t = b && D.techniciens.find(x => x.id === (b.dataset.position ?? b.dataset.retour));
+  const b = e.target.closest('[data-position], [data-retour], [data-annuler-position]');
+  if (!b) return;
+  const id = b.dataset.position ?? b.dataset.retour ?? b.dataset.annulerPosition;
+  const t = D.techniciens.find(x => x.id === id);
   if (!t) return;
   if (b.dataset.retour) revenirPositionHabituelle(t);
-  else changerPosition(t);
+  else if (b.dataset.annulerPosition) fermerEdition();
+  else ouvrirEdition(t);
 });
 
 // ─── Saisie et suggestions ────────────────────────────────────────

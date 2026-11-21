@@ -1,5 +1,11 @@
 # Changements
 
+## v0.2.2 · 21 novembre 2026
+
+- Le bouton « Changer » est placé juste à côté de la position du technicien ; il se transforme sur place en champ de recherche d'adresse (plus de fenêtre). Choisir une adresse dans la liste l'enregistre.
+- Les techniciens en position temporaire se repèrent d'un coup d'œil : vignette à cadre et fond ambre, étiquette « Position temporaire », repère ambre sur la carte. Le bouton « Revenir à … » les remet à leur position habituelle.
+- Changer la nature de la visite ou le type d'intervention efface toutes les positions temporaires.
+
 ## v0.2.1 · 21 novembre 2026
 
 - Position temporaire sans date : elle reste valable jusqu'au retour à la position habituelle.

@@ -429,6 +429,20 @@ route('DELETE', '/api/techniciens/:id/position', ({ params }) => {
   return technicien;
 });
 
+// Toutes les positions temporaires d'un coup (changement de nature de visite ou de type d'intervention).
+route('DELETE', '/api/positions-temporaires', () => {
+  const d = lire();
+  let n = 0;
+  for (const t of d.techniciens) {
+    if (t.positionTemporaire) {
+      delete t.positionTemporaire;
+      n++;
+    }
+  }
+  if (n) enregistrer(d);
+  return { n };
+});
+
 // Absences
 route('POST', '/api/absences', ({ corps }) => {
   const d = lire();
