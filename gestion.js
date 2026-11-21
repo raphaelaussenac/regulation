@@ -1,5 +1,5 @@
 // Gestion : techniciens, absences, types d'intervention, paramètres et sauvegarde.
-import { $, esc, api, barre, ouvrirFenetre, annoncer, dateDuJour, fmtDate, fmtDateLongue, pluriel, autocompleteAdresse, positionDuJour, centreDuContour } from './commun.js';
+import { $, esc, api, barre, ouvrirFenetre, annoncer, dateDuJour, fmtDate, fmtDateLongue, pluriel, autocompleteAdresse, positionTemporaire, centreDuContour } from './commun.js';
 import { exporter, importer, derniereSauvegarde } from './stockage.js';
 
 let D = await api('/api/donnees');
@@ -63,11 +63,9 @@ function disponibilite(t) {
 }
 
 // Position temporaire en cours, réglée depuis la Régulation.
-function positionTemporaire(t) {
-  const p = positionDuJour(t);
-  if (!p) return '';
-  const quand = p.jusquau > dateDuJour() ? `jusqu’au ${fmtDate(p.jusquau)}` : 'aujourd’hui';
-  return `<span class="statut statut--absent tableau__detail">Position temporaire : ${esc(p.adresse || p.ville)} · ${quand}</span>`;
+function lignePositionTemporaire(t) {
+  const p = positionTemporaire(t);
+  return p ? `<span class="statut statut--absent tableau__detail">Position temporaire : ${esc(p.adresse || p.ville)}</span>` : '';
 }
 
 // ─── Rendus ───────────────────────────────────────────────────────
@@ -76,13 +74,13 @@ function rendreTechniciens() {
   $('corps-techniciens').innerHTML = trier(D.techniciens, t => t.nom).map(t => `
     <tr>
       <td class="tableau__titre"><span class="tableau__nom">${esc(t.nom)}</span>${t.tel ? `<a class="tableau__detail" href="tel:${esc(t.tel.replace(/[^\d+]/g, ''))}">${esc(t.tel)}</a>` : ''}</td>
-      ${cellule('Point de départ', `${esc(t.ville)}${t.adresse ? `<span class="tableau__detail">${esc(t.adresse)}</span>` : ''}${positionTemporaire(t)}`)}
+      ${cellule('Point de départ', `${esc(t.ville)}${t.adresse ? `<span class="tableau__detail">${esc(t.adresse)}</span>` : ''}${lignePositionTemporaire(t)}`)}
       ${cellule('Dépannage', puces(t.depannage))}
       ${cellule('Entretien', puces(t.entretien))}
       ${cellule('Disponibilité', disponibilite(t))}
       ${actions(
         bouton('modifier-technicien', t.id, 'Modifier'),
-        positionDuJour(t) ? bouton('annuler-position', t.id, 'Fin de la position temporaire') : '',
+        positionTemporaire(t) ? bouton('annuler-position', t.id, 'Revenir à la position habituelle') : '',
         bouton('supprimer-technicien', t.id, 'Supprimer', true),
       )}
     </tr>`).join('') || ligneVide(6, 'Aucun technicien. Ajoutez le premier avec le bouton « Ajouter un technicien ».');

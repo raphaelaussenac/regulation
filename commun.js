@@ -101,10 +101,9 @@ export function barre({ entreprise, page }) {
     </nav>`;
 }
 
-// Position du jour d'un technicien : sa position temporaire si elle court encore, sinon rien.
-export function positionDuJour(t, jour = dateDuJour()) {
-  const p = t.positionTemporaire;
-  return p && p.jusquau >= jour ? p : null;
+// Position temporaire en cours d'un technicien, ou rien s'il part de son point de départ habituel.
+export function positionTemporaire(t) {
+  return t.positionTemporaire ?? null;
 }
 
 // Centre approximatif d'un département, d'après son contour.

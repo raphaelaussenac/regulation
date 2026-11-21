@@ -1,5 +1,11 @@
 # Changements
 
+## v0.2.1 · 21 novembre 2026
+
+- Position temporaire sans date : elle reste valable jusqu'au retour à la position habituelle.
+- Bouton « Revenir à la position habituelle » sur la vignette du technicien concerné (et sur sa fiche dans Gestion).
+- Une position temporaire de la v0.2.0 dont la date est passée est retirée ; les autres restent en place, sans date.
+
 ## v0.2.0 · 21 novembre 2026
 
 - Position temporaire : un bouton « Changer de position » sur chaque vignette de la Régulation indique où se trouve un technicien aujourd'hui ou jusqu'à une date. Le classement, les trajets et la carte partent de cette position ; passé la date, le technicien repart de son point de départ habituel, sans rien faire.

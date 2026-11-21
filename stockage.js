@@ -87,6 +87,13 @@ function migrer(d) {
     delete t.interventions;
   }
   for (const x of d.interventions ?? []) x.duree ??= '';
+  // v0.2.0 : les positions temporaires avaient une date de fin. Celles déjà terminées sont retirées,
+  // les autres restent en place sans date, jusqu'au retour à la position habituelle.
+  for (const t of d.techniciens ?? []) {
+    const p = t.positionTemporaire;
+    if (p?.jusquau && p.jusquau < aujourdhui()) delete t.positionTemporaire;
+    else if (p) delete p.jusquau;
+  }
   return d;
 }
 
@@ -392,20 +399,17 @@ route('DELETE', '/api/techniciens/:id', ({ params }) => {
   enregistrer(d);
 });
 
-// Position temporaire : là où se trouve le technicien jusqu'à une date (incluse), à la place de son point de départ.
-// Passé cette date, il repart de son point de départ habituel sans rien faire.
+// Position temporaire : là où se trouve le technicien, à la place de son point de départ habituel.
+// Elle reste valable jusqu'à ce qu'on revienne à la position habituelle (bouton sur la vignette).
 function lirePosition(corps) {
   if (corps.lat == null || corps.lon == null) {
-    refuser('Position du jour : choisissez une adresse ou une commune dans la liste proposée.');
+    refuser('Position temporaire : choisissez une adresse ou une commune dans la liste proposée.');
   }
-  const jusquau = dateISO(corps.jusquau, 'Jusqu’au');
-  if (jusquau < aujourdhui()) refuser('La date de fin est déjà passée.');
   return {
     ville: texte(corps.ville, 'Commune', { max: 80 }),
     adresse: texte(corps.adresse, 'Adresse', { max: 200, requis: false }),
     lat: nombre(corps.lat, 'Latitude', -90, 90),
     lon: nombre(corps.lon, 'Longitude', -180, 180),
-    jusquau,
   };
 }
 
@@ -511,8 +515,8 @@ export function importer(objet) {
     };
     d.techniciens = source.techniciens.map(t => {
       const technicien = { id: texte(t.id, 'Identifiant de technicien', { max: 40 }), ...lireTechnicien(d, t) };
-      // Une position temporaire encore valable est gardée ; une position périmée ou abîmée est ignorée.
-      if (t.positionTemporaire) {
+      // Une position temporaire est gardée (sauf celle d'une sauvegarde v0.2.0 déjà terminée) ; abîmée, elle est ignorée.
+      if (t.positionTemporaire && !(t.positionTemporaire.jusquau && t.positionTemporaire.jusquau < aujourdhui())) {
         try { technicien.positionTemporaire = lirePosition(t.positionTemporaire); } catch { /* ignorée */ }
       }
       return technicien;

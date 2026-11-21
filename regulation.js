@@ -1,19 +1,18 @@
 // Régulation : classe les techniciens disponibles par distance routière jusqu'à la commune du client.
-import { $, esc, api, normaliser, barre, dateDuJour, fmtDate, ouvrirFenetre, annoncer, autocompleteAdresse, positionDuJour, centreDuContour } from './commun.js';
+import { $, esc, api, normaliser, barre, dateDuJour, fmtDate, ouvrirFenetre, annoncer, autocompleteAdresse, positionTemporaire, centreDuContour } from './commun.js';
 
 const [moi, donneesServeur, geo] = await Promise.all([
   api('/api/moi'),
   api('/api/donnees'),
   api('/api/geo').catch(e => { console.warn(e.message); return null; }),
 ]);
-// Position du jour : un technicien qui a une position temporaire en cours part de là, et non de son point
-// de départ habituel. Ses champs ville et adresse restent ceux du point de départ ; « temporaire » décrit l'autre.
+// Position temporaire : un technicien qui en a une part de là, et non de son point de départ habituel.
+// Ses champs ville et adresse restent ceux du point de départ ; « temporaire » décrit l'autre.
 function avecPositionsDuJour(d) {
-  const jour = dateDuJour();
   return {
     ...d,
     techniciens: d.techniciens.map(t => {
-      const p = positionDuJour(t, jour);
+      const p = positionTemporaire(t);
       return p ? { ...t, lat: p.lat, lon: p.lon, temporaire: p } : t;
     }),
   };
@@ -267,10 +266,13 @@ function ligneDispo(l, rang) {
     : '';
   const temp = t.temporaire;
   const base = temp
-    ? `<span class="panneau__temp">Position temporaire : ${esc(temp.adresse || temp.ville)} · ${temp.jusquau > jourAffiche ? `jusqu’au ${fmtDate(temp.jusquau)}` : 'aujourd’hui'}</span>
+    ? `<span class="panneau__temp">Position temporaire : ${esc(temp.adresse || temp.ville)}</span>
        <span class="panneau__base">Habituellement : ${esc(t.ville)}</span>`
     : `<span class="panneau__base">${esc(t.ville)}</span>`;
-  const action = `<button type="button" class="panneau__action" data-position="${esc(t.id)}">${temp ? 'Modifier la position' : 'Changer de position'}</button>`;
+  const action = `<span class="panneau__actions">
+      <button type="button" class="panneau__action" data-position="${esc(t.id)}">${temp ? 'Modifier la position' : 'Changer de position'}</button>
+      ${temp ? `<button type="button" class="panneau__action" data-retour="${esc(t.id)}">Revenir à la position habituelle</button>` : ''}
+    </span>`;
   return `<li class="panneau${proche ? ' panneau--proche' : ''}" data-id="${esc(l.id)}">
     ${resultat ? `<span class="panneau__rang" aria-hidden="true">${rang + 1}</span>` : ''}
     <span class="panneau__qui">
@@ -668,11 +670,10 @@ async function rechargerEquipe() {
 function changerPosition(t) {
   const temp = t.temporaire;
   let position = temp ? { ville: temp.ville, adresse: temp.adresse, lat: temp.lat, lon: temp.lon } : null;
-  const jour = dateDuJour();
   ouvrirFenetre({
     titre: `Position de ${t.nom}`,
     corps: `
-      <p>Point de départ habituel : <strong>${esc(t.adresse || t.ville)}</strong>. Jusqu’à la date choisie, le classement part de la position ci-dessous ; ensuite, de nouveau du point de départ habituel.</p>
+      <p>Point de départ habituel : <strong>${esc(t.adresse || t.ville)}</strong>. Le classement partira de la position ci-dessous jusqu’à ce que vous touchiez « Revenir à la position habituelle » sur sa vignette.</p>
       <div class="champ">
         <label for="f-position">Position temporaire</label>
         <div class="combo">
@@ -682,11 +683,7 @@ function changerPosition(t) {
         </div>
         <p id="f-position-aide" class="aide"></p>
       </div>
-      <div class="champ">
-        <label for="f-jusquau">Jusqu’au (inclus)</label>
-        <input id="f-jusquau" name="jusquau" type="date" required value="${esc(temp?.jusquau ?? jour)}" min="${jour}">
-      </div>
-      ${temp ? '<button type="button" class="bouton bouton--large" data-retour>Revenir dès maintenant au point de départ habituel</button>' : ''}`,
+`,
     apresOuverture(fenetre) {
       const aide = fenetre.querySelector('#f-position-aide');
       const decrire = () => {
@@ -699,32 +696,33 @@ function changerPosition(t) {
         position = choix;
         decrire();
       }, () => centreDepartement);
-      fenetre.querySelector('[data-retour]')?.addEventListener('click', async () => {
-        try {
-          await api(`/api/techniciens/${t.id}/position`, { methode: 'DELETE' });
-        } catch (e) {
-          annoncer(e.message);
-          return;
-        }
-        fenetre.close();
-        await rechargerEquipe();
-        annoncer(`${t.nom} repart de son point de départ habituel.`);
-      });
     },
-    async valider(formulaire) {
+    async valider() {
       if (!position) throw new Error('Position temporaire : choisissez une adresse ou une commune dans la liste proposée.');
-      const jusquau = new FormData(formulaire).get('jusquau');
-      await api(`/api/techniciens/${t.id}/position`, { methode: 'PUT', corps: { ...position, jusquau } });
+      await api(`/api/techniciens/${t.id}/position`, { methode: 'PUT', corps: position });
       await rechargerEquipe();
-      annoncer(`Position de ${t.nom} : ${position.ville}${jusquau > jour ? ` jusqu’au ${fmtDate(jusquau)}` : ' aujourd’hui'}.`);
+      annoncer(`Position temporaire de ${t.nom} : ${position.ville}.`);
     },
   });
 }
 
+async function revenirPositionHabituelle(t) {
+  try {
+    await api(`/api/techniciens/${t.id}/position`, { methode: 'DELETE' });
+  } catch (e) {
+    annoncer(e.message);
+    return;
+  }
+  await rechargerEquipe();
+  annoncer(`${t.nom} repart de son point de départ habituel (${t.ville}).`);
+}
+
 blocClassement.addEventListener('click', e => {
-  const b = e.target.closest('[data-position]');
-  const t = b && D.techniciens.find(x => x.id === b.dataset.position);
-  if (t) changerPosition(t);
+  const b = e.target.closest('[data-position], [data-retour]');
+  const t = b && D.techniciens.find(x => x.id === (b.dataset.position ?? b.dataset.retour));
+  if (!t) return;
+  if (b.dataset.retour) revenirPositionHabituelle(t);
+  else changerPosition(t);
 });
 
 // ─── Saisie et suggestions ────────────────────────────────────────

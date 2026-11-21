@@ -71,9 +71,10 @@ html, body { height: 100%; }
 .panneau .puces { margin-top: 6px; }
 /* Position temporaire : écrite en gras, au-dessus du point de départ habituel. */
 .panneau__temp { font-size: 14px; font-weight: 600; }
+.panneau__actions { display: flex; flex-wrap: wrap; gap: 0 18px; margin-top: 6px; }
 .panneau__action {
   justify-self: start;
-  min-height: 36px; margin-top: 6px; padding: 4px 0;
+  min-height: 36px; padding: 4px 0;
   border: 0; background: none; color: inherit;
   font: 600 14px/1.2 var(--font-text);
   text-decoration: underline; text-underline-offset: 3px;
