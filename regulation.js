@@ -36,7 +36,6 @@ const lieu = $('classement-lieu');
 function afficherEntete() {
   barre({ moi, entreprise: D.parametres.entreprise, page: 'regulation' });
   document.title = `Régulation · ${D.parametres.entreprise}`;
-  $('surtitre').textContent = `${modeActuel()} · ${D.parametres.departementNom} (${D.parametres.departement})`;
 }
 // ─── Nature de la visite ──────────────────────────────────────────
 // Chaque technicien a deux listes de compétences : une pour le dépannage, une pour l'entretien.
@@ -283,7 +282,8 @@ function ligneDispo(l, rang) {
         <button type="button" class="bouton-position" data-position="${esc(t.id)}">Changer</button>
         ${temp ? `<button type="button" class="bouton-position" data-retour="${esc(t.id)}">Revenir à ${esc(t.ville)}</button>` : ''}
       </span>`;
-  return `<li class="panneau${proche ? ' panneau--proche' : ''}${temp ? ' panneau--temp' : ''}" data-id="${esc(l.id)}">
+  const edition = etatPage.edition === t.id;
+  return `<li class="panneau${proche ? ' panneau--proche' : ''}${temp ? ' panneau--temp' : ''}${edition ? ' panneau--edition' : ''}" data-id="${esc(l.id)}">
     ${resultat ? `<span class="panneau__rang" aria-hidden="true">${rang + 1}</span>` : ''}
     <span class="panneau__qui">
       ${proche ? '<span class="panneau__mention">Le plus proche</span>' : ''}
@@ -315,7 +315,6 @@ function rendreListe() {
   const intervention = D.interventions.find(x => x.id === type);
   const enMode = `en ${modeActuel().toLowerCase()}`;
   const duree = choixMode.value === 'entretien' && intervention?.duree ? ` Durée prévue pour l’entretien : ${intervention.duree}.` : '';
-  $('surtitre').textContent = `${modeActuel()} · ${D.parametres.departementNom} (${D.parametres.departement})`;
 
   surtitreClassement.textContent = client ? 'Client' : 'Vos techniciens';
   lieu.hidden = !client;
@@ -692,6 +691,15 @@ function brancherEdition() {
     if (e.key === 'Escape' && boite.hidden) fermerEdition();
   });
   champ.focus();
+  // Sur téléphone, la vignette remonte sous la barre du haut : la liste des adresses proposées
+  // s'affiche alors au-dessus du clavier.
+  if (matchMedia('(max-width: 720px)').matches) {
+    setTimeout(() => {
+      const vignette = champ.closest('.panneau');
+      const haut = vignette.getBoundingClientRect().top - $('barre').offsetHeight - 8;
+      window.scrollBy({ top: haut, behavior: 'smooth' });
+    }, 300);
+  }
 }
 
 function ouvrirEdition(t) {

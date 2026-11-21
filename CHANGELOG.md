@@ -1,5 +1,10 @@
 # Changements
 
+## v0.2.3 · 21 novembre 2026
+
+- Régulation : le panneau commence directement par « Commune du client » (titre « Qui appeler ? » et texte d'explication retirés).
+- Changement de position : la liste des adresses proposées est lisible sur toutes les vignettes (texte foncé sur fond blanc, plus grand, sur toute la largeur de la vignette) ; sur téléphone, la vignette remonte en haut de l'écran pour que la liste reste au-dessus du clavier.
+
 ## v0.2.2 · 21 novembre 2026
 
 - Le bouton « Changer » est placé juste à côté de la position du technicien ; il se transforme sur place en champ de recherche d'adresse (plus de fenêtre). Choisir une adresse dans la liste l'enregistre.
