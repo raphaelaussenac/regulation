@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; font-src 'self'; img-src 'self' data: blob: https://data.geopf.fr https://tiles.openfreemap.org; connect-src 'self' https://data.geopf.fr https://geo.api.gouv.fr https://tiles.openfreemap.org; worker-src 'self' blob:; child-src blob:; manifest-src 'self'; base-uri 'self'; form-action 'self'">
+<meta name="referrer" content="strict-origin-when-cross-origin">
+<title>Régulation</title>
+<meta name="theme-color" content="#111915">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Régulation">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icone.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icone-180.png">
+<link rel="stylesheet" href="polices/polices.css">
+<link rel="stylesheet" href="lib/leaflet.css">
+<link rel="stylesheet" href="lib/maplibre-gl.css">
+<link rel="stylesheet" href="commun.css">
+<link rel="stylesheet" href="regulation.css">
+</head>
+<body class="page-regulation">
+<header id="barre" class="barre"></header>
+
+<div class="app">
+  <aside class="panel">
+    <header class="entete">
+      <p id="surtitre" class="surtitre">Régulation</p>
+      <h1>Qui appeler&nbsp;?</h1>
+      <p class="chapo">Choisissez la commune du client et le type d'intervention. Les techniciens disponibles sont classés par distance par la route.</p>
+    </header>
+
+    <div class="criteres">
+      <div class="champ">
+        <label for="commune">Commune du client</label>
+        <div class="combo">
+          <input id="commune" type="text" placeholder="Nom de la commune ou code postal"
+                 autocomplete="off" autocapitalize="words" spellcheck="false" enterkeyhint="search"
+                 role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="suggestions">
+          <button id="effacer" class="effacer" type="button" aria-label="Effacer la commune" hidden>×</button>
+          <ul id="suggestions" class="suggestions" role="listbox" aria-label="Communes proposées" hidden></ul>
+        </div>
+      </div>
+      <div class="champ">
+        <label for="intervention">Type d'intervention</label>
+        <div class="choix">
+          <select id="intervention" autocomplete="off">
+            <option value="">Tous types d'intervention</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <section id="classement" class="classement" aria-label="Classement des techniciens">
+      <div class="classement__tete">
+        <p id="classement-surtitre" class="surtitre">Vos techniciens</p>
+        <h2 id="classement-lieu" class="classement__lieu" hidden></h2>
+      </div>
+      <ol id="liste" class="panneaux"></ol>
+      <div id="indispos" class="indispos" hidden>
+        <p class="surtitre">Indisponibles</p>
+        <ul id="indispos-liste" class="indispos__liste"></ul>
+      </div>
+      <p id="etat" class="etat" role="status" aria-live="polite"></p>
+    </section>
+  </aside>
+
+  <div id="carte" role="region" aria-label="Carte des techniciens"></div>
+</div>
+
+<script src="lib/leaflet.js"></script>
+<script src="lib/maplibre-gl.js"></script>
+<script src="lib/leaflet-maplibre-gl.js"></script>
+<script type="module" src="regulation.js"></script>
+</body>
+</html>

@@ -1,0 +1,107 @@
+/* Gestion : une colonne de lecture, des onglets, des tableaux sobres. Le vert est réservé aux actions principales. */
+.page-gestion { min-height: 100vh; }
+.gestion {
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 28px 20px 64px;
+  display: grid; gap: 22px;
+}
+.gestion__tete { display: grid; gap: 6px; }
+
+.onglets { display: flex; flex-wrap: wrap; gap: 4px 6px; border-bottom: 2px solid var(--rule); }
+.onglet {
+  margin-bottom: -2px;
+  padding: 10px 12px 9px;
+  font: 600 15px/1 var(--font-sign); letter-spacing: .05em; text-transform: uppercase;
+  color: var(--muted); text-decoration: none;
+  border-bottom: 3px solid transparent;
+}
+.onglet:hover { color: var(--ink); }
+.onglet[aria-current="true"] { color: var(--ink); border-bottom-color: var(--sign); }
+
+.rubrique { display: grid; gap: 14px; }
+.rubrique__tete { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 12px 20px; }
+.rubrique__tete h2 { margin: 0 0 4px; font: 700 26px/1.1 var(--font-sign); }
+.rubrique__tete .aide { max-width: 62ch; }
+
+.tableau-conteneur {
+  overflow-x: auto;
+  background: var(--surface);
+  border-radius: 10px;
+  box-shadow: 0 0 0 1px var(--rule);
+}
+.tableau { width: 100%; min-width: 760px; border-collapse: collapse; }
+.tableau th {
+  padding: 12px 14px;
+  font: 600 12px/1.2 var(--font-sign); letter-spacing: .08em; text-transform: uppercase;
+  color: var(--muted); text-align: left;
+  border-bottom: 1px solid var(--rule);
+}
+.tableau td {
+  padding: 12px 14px;
+  vertical-align: top;
+  border-bottom: 1px solid color-mix(in srgb, var(--rule) 60%, transparent);
+}
+.tableau tbody tr:last-child td { border-bottom: 0; }
+.tableau__nom { display: block; font: 700 18px/1.2 var(--font-sign); }
+.tableau__detail { display: block; margin-top: 2px; font-size: 13px; color: var(--muted); }
+.tableau__actions { text-align: right; white-space: nowrap; }
+.tableau__actions .bouton + .bouton { margin-left: 6px; }
+.tableau__vide { padding: 28px 14px; text-align: center; color: var(--muted); }
+.tableau .puces { max-width: 280px; }
+
+.statut { font-size: 14px; }
+.statut--ok { color: var(--sign-text); font-weight: 500; }
+.statut--absent { color: var(--alert); font-weight: 600; }
+.puce--grande { font-size: 13px; padding: 4px 8px 3px; }
+
+.parametres {
+  display: grid; gap: 18px;
+  max-width: 560px;
+  padding: 22px;
+  background: var(--surface);
+  border-radius: 10px;
+  box-shadow: 0 0 0 1px var(--rule);
+}
+.parametres__actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; }
+
+@media (max-width: 600px) {
+  .gestion { padding: 22px 16px 48px; }
+  h1 { font-size: 30px; }
+}
+
+/* ─── iPhone : chaque ligne des tableaux devient une fiche ───────────── */
+.gestion { padding-bottom: calc(64px + env(safe-area-inset-bottom)); }
+@media (max-width: 700px) {
+  .gestion {
+    padding-left: max(16px, env(safe-area-inset-left));
+    padding-right: max(16px, env(safe-area-inset-right));
+  }
+  .rubrique__tete > .bouton { width: 100%; }
+  .onglets { gap: 0 2px; }
+  .onglet { padding: 12px 8px 10px; font-size: 14px; letter-spacing: .03em; }
+  .tableau-conteneur { overflow: visible; background: none; border-radius: 0; box-shadow: none; }
+  .tableau { min-width: 0; }
+  .tableau thead { display: none; }
+  .tableau, .tableau tbody, .tableau tr, .tableau td { display: block; }
+  .tableau tr {
+    margin-bottom: 10px; padding: 8px 0 4px;
+    background: var(--surface);
+    border-radius: 10px;
+    box-shadow: 0 0 0 1px var(--rule);
+  }
+  .tableau td, .tableau tbody tr:last-child td { padding: 6px 16px; border: 0; }
+  .tableau td[data-libelle]::before {
+    content: attr(data-libelle);
+    display: block; margin-bottom: 3px;
+    font: 600 11px/1.2 var(--font-sign); letter-spacing: .08em; text-transform: uppercase;
+    color: var(--muted);
+  }
+  .tableau__titre .tableau__nom { font-size: 21px; }
+  .tableau .puces { max-width: none; }
+  .tableau__actions { display: flex !important; flex-wrap: wrap; gap: 8px; padding-top: 10px !important; padding-bottom: 10px !important; text-align: left; white-space: normal; }
+  .tableau__actions .bouton + .bouton { margin-left: 0; }
+  .tableau__vide { padding: 24px 16px; }
+  .parametres { padding: 18px 16px; }
+  .parametres__actions .bouton { width: 100%; }
+}

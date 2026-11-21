@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; font-src 'self'; img-src 'self' data:; connect-src 'self' https://data.geopf.fr https://geo.api.gouv.fr; worker-src 'self'; manifest-src 'self'; base-uri 'self'; form-action 'self'">
+<meta name="referrer" content="strict-origin-when-cross-origin">
+<title>Gestion</title>
+<meta name="theme-color" content="#111915">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Régulation">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icone.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icone-180.png">
+<link rel="stylesheet" href="polices/polices.css">
+<link rel="stylesheet" href="commun.css">
+<link rel="stylesheet" href="gestion.css">
+<script type="module" src="gestion.js"></script>
+</head>
+<body class="page-gestion">
+<header id="barre" class="barre"></header>
+
+<main class="gestion">
+  <header class="gestion__tete">
+    <p id="surtitre" class="surtitre">Gestion</p>
+    <h1>Gestion</h1>
+  </header>
+
+  <nav class="onglets" aria-label="Rubriques">
+    <a class="onglet" href="#techniciens" data-rubrique="techniciens">Techniciens</a>
+    <a class="onglet" href="#absences" data-rubrique="absences">Absences</a>
+    <a class="onglet" href="#interventions" data-rubrique="interventions">Interventions</a>
+    <a class="onglet" href="#parametres" data-rubrique="parametres">Paramètres</a>
+    <a class="onglet" href="#sauvegarde" data-rubrique="sauvegarde">Sauvegarde</a>
+  </nav>
+
+  <section id="rubrique-techniciens" class="rubrique" aria-labelledby="titre-techniciens">
+    <div class="rubrique__tete">
+      <div>
+        <h2 id="titre-techniciens">Techniciens</h2>
+        <p id="compte-techniciens" class="aide"></p>
+      </div>
+      <button type="button" class="bouton bouton--principal" data-action="ajouter-technicien">Ajouter un technicien</button>
+    </div>
+    <div class="tableau-conteneur">
+      <table class="tableau">
+        <thead>
+          <tr>
+            <th scope="col">Technicien</th>
+            <th scope="col">Point de départ</th>
+            <th scope="col">Interventions</th>
+            <th scope="col">Disponibilité</th>
+            <th scope="col"><span class="visuellement-cache">Actions</span></th>
+          </tr>
+        </thead>
+        <tbody id="corps-techniciens"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section id="rubrique-absences" class="rubrique" aria-labelledby="titre-absences" hidden>
+    <div class="rubrique__tete">
+      <div>
+        <h2 id="titre-absences">Absences</h2>
+        <p class="aide">Pendant son absence, le technicien apparaît « Indisponible » dans la régulation.</p>
+      </div>
+      <button type="button" class="bouton bouton--principal" data-action="ajouter-absence">Ajouter une absence</button>
+    </div>
+    <div class="tableau-conteneur">
+      <table class="tableau">
+        <thead>
+          <tr>
+            <th scope="col">Technicien</th>
+            <th scope="col">Premier jour</th>
+            <th scope="col">Dernier jour</th>
+            <th scope="col">Motif</th>
+            <th scope="col">État</th>
+            <th scope="col"><span class="visuellement-cache">Actions</span></th>
+          </tr>
+        </thead>
+        <tbody id="corps-absences"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section id="rubrique-interventions" class="rubrique" aria-labelledby="titre-interventions" hidden>
+    <div class="rubrique__tete">
+      <div>
+        <h2 id="titre-interventions">Types d'intervention</h2>
+        <p class="aide">L'étiquette courte s'affiche sur les fiches des techniciens, le libellé dans le menu de la régulation.</p>
+      </div>
+      <button type="button" class="bouton bouton--principal" data-action="ajouter-intervention">Ajouter un type</button>
+    </div>
+    <div class="tableau-conteneur">
+      <table class="tableau">
+        <thead>
+          <tr>
+            <th scope="col">Étiquette</th>
+            <th scope="col">Libellé</th>
+            <th scope="col">Techniciens qui la font</th>
+            <th scope="col"><span class="visuellement-cache">Actions</span></th>
+          </tr>
+        </thead>
+        <tbody id="corps-interventions"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section id="rubrique-parametres" class="rubrique" aria-labelledby="titre-parametres" hidden>
+    <div class="rubrique__tete">
+      <h2 id="titre-parametres">Paramètres</h2>
+    </div>
+    <form id="form-parametres" class="parametres" novalidate>
+      <div class="champ">
+        <label for="p-entreprise">Nom de l'entreprise</label>
+        <input id="p-entreprise" maxlength="80" required>
+        <p class="aide">Affiché en haut des pages.</p>
+      </div>
+      <div class="champ">
+        <label for="p-departement">Département</label>
+        <div class="choix"><select id="p-departement"></select></div>
+        <p class="aide">Ses communes sont proposées en premier dans la recherche et son contour est tracé sur la carte.</p>
+      </div>
+      <div class="parametres__actions">
+        <button type="submit" class="bouton bouton--principal">Enregistrer</button>
+        <p id="p-message" class="message" role="status"></p>
+      </div>
+    </form>
+  </section>
+
+  <section id="rubrique-sauvegarde" class="rubrique" aria-labelledby="titre-sauvegarde" hidden>
+    <div class="rubrique__tete">
+      <div>
+        <h2 id="titre-sauvegarde">Sauvegarde</h2>
+        <p class="aide">Les données ne sont enregistrées que dans ce téléphone. Exportez-les régulièrement (dans Fichiers, iCloud Drive ou par AirDrop) : en cas de perte ou de changement de téléphone, vous les restaurerez avec « Restaurer une sauvegarde ».</p>
+      </div>
+    </div>
+    <div class="parametres">
+      <p id="s-derniere" class="message" role="status"></p>
+      <div class="parametres__actions">
+        <button type="button" class="bouton bouton--principal" data-action="exporter">Exporter une sauvegarde</button>
+        <button type="button" class="bouton" data-action="importer">Restaurer une sauvegarde</button>
+        <input id="fichier-import" type="file" accept="application/json,.json" hidden>
+      </div>
+    </div>
+  </section>
+</main>
+</body>
+</html>

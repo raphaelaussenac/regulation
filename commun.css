@@ -1,0 +1,256 @@
+/* Styles communs aux pages : couleurs, typographie, barre du haut, champs, boutons, fenêtres.
+   Identité : la signalétique routière française (panneaux blancs à listel noir, vert pour l'itinéraire à suivre). */
+:root {
+  --ground: #E6EAE7;
+  --surface: #FFFFFF;
+  --ink: #111915;
+  --muted: #525E58;
+  --rule: #C3CCC6;
+  --sign: #006E47;
+  --sign-text: #006E47;
+  --on-sign: #FFFFFF;
+  --alert: #A3261C;
+  --danger: #A3261C;
+  --bar-bg: #111915;
+  --bar-fg: #E6EAE7;
+  --bar-accent: #4CC38A;
+  /* La carte reste claire dans les deux thèmes, ses repères aussi. */
+  --map-ink: #111915;
+  --map-paper: #FFFFFF;
+  --map-sign: #006E47;
+  --map-off: #E3E6E4;
+  --map-bg: #DDE2DE;
+  --map-hover: #F2F4F2;
+  --font-sign: "Barlow Semi Condensed", "Arial Narrow", "Helvetica Neue", Arial, sans-serif;
+  --font-text: "Barlow", "Helvetica Neue", Arial, sans-serif;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --ground: #0F1512;
+    --surface: #18201C;
+    --ink: #E3EAE5;
+    --muted: #97A49D;
+    --rule: #2B3731;
+    --sign: #0B7A50;
+    --sign-text: #5CCB94;
+    --on-sign: #FFFFFF;
+    --alert: #F29086;
+    --danger: #B8352A;
+    --bar-bg: #070B09;
+    --bar-fg: #E3EAE5;
+    --bar-accent: #4CC38A;
+    color-scheme: dark;
+  }
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { margin: 0; }
+body {
+  background: var(--ground);
+  color: var(--ink);
+  font: 400 15px/1.45 var(--font-text);
+  -webkit-font-smoothing: antialiased;
+}
+:focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; }
+a { color: inherit; text-underline-offset: 3px; }
+
+.surtitre {
+  margin: 0;
+  font: 600 12px/1.2 var(--font-sign);
+  letter-spacing: .1em; text-transform: uppercase;
+  color: var(--muted);
+}
+h1 { margin: 0; font: 700 34px/1 var(--font-sign); letter-spacing: -.01em; text-wrap: balance; }
+.aide { margin: 0; font-size: 13px; color: var(--muted); }
+.message { margin: 0; font-size: 14px; }
+.message--erreur { color: var(--alert); font-weight: 500; }
+.visuellement-cache {
+  position: absolute; width: 1px; height: 1px;
+  overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap;
+}
+
+/* Barre du haut */
+.barre {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 6px 22px;
+  padding: 8px 20px;
+  background: var(--bar-bg); color: var(--bar-fg);
+}
+.barre__marque { font: 700 18px/1.1 var(--font-sign); text-decoration: none; }
+.barre__nav { display: flex; gap: 2px; }
+.barre__nav a {
+  padding: 8px 10px 6px;
+  font: 600 14px/1 var(--font-sign); letter-spacing: .06em; text-transform: uppercase;
+  text-decoration: none; opacity: .72;
+  border-bottom: 2px solid transparent;
+}
+.barre__nav a:hover { opacity: 1; }
+.barre__nav a[aria-current="page"] { opacity: 1; border-bottom-color: var(--bar-accent); }
+.barre__compte { margin-left: auto; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 16px; font-size: 14px; }
+.barre__nom { font-weight: 600; }
+.barre__action {
+  padding: 4px 0; border: 0; background: none; color: inherit;
+  font: 500 14px/1.2 var(--font-text);
+  text-decoration: underline; text-underline-offset: 3px;
+  opacity: .85; cursor: pointer;
+}
+.barre__action:hover { opacity: 1; }
+.barre :focus-visible { outline-color: var(--bar-fg); }
+
+/* Boutons */
+.bouton {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  min-height: 40px; padding: 8px 14px;
+  font: 600 15px/1 var(--font-sign); letter-spacing: .02em;
+  color: var(--ink); background: var(--surface);
+  border: 2px solid var(--ink); border-radius: 7px;
+  text-decoration: none; white-space: nowrap;
+  cursor: pointer;
+}
+.bouton:hover { background: color-mix(in srgb, var(--ink) 7%, var(--surface)); }
+.bouton:disabled { opacity: .55; cursor: progress; }
+.bouton--principal { color: var(--on-sign); background: var(--sign); border-color: var(--sign); }
+.bouton--principal:hover { background: color-mix(in srgb, var(--sign) 85%, #000); }
+.bouton--danger { color: #FFFFFF; background: var(--danger); border-color: var(--danger); }
+.bouton--danger:hover { background: color-mix(in srgb, var(--danger) 85%, #000); }
+.bouton--discret { border-color: transparent; background: transparent; text-decoration: underline; text-underline-offset: 3px; }
+.bouton--discret:hover { background: color-mix(in srgb, var(--ink) 7%, transparent); }
+.bouton--petit { min-height: 32px; padding: 6px 10px; font-size: 14px; border-width: 1.5px; }
+.bouton--large { width: 100%; }
+
+/* Champs de saisie */
+.champ { display: grid; gap: 7px; min-width: 0; }
+.champ > label, .cases > legend {
+  padding: 0;
+  font: 600 14px/1.1 var(--font-sign); letter-spacing: .06em; text-transform: uppercase;
+}
+.facultatif { font-weight: 500; text-transform: none; letter-spacing: 0; color: var(--muted); }
+.champ input, .champ select {
+  width: 100%;
+  padding: 10px 12px;
+  font: 500 17px/1.2 var(--font-text);
+  color: var(--ink);
+  background: var(--surface);
+  border: 2px solid var(--ink);
+  border-radius: 7px;
+}
+.champ input::placeholder { color: var(--muted); font-weight: 400; opacity: .85; }
+.champ input:focus, .champ select:focus {
+  outline: none;
+  border-color: var(--sign);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--sign) 30%, transparent);
+}
+.choix { position: relative; }
+.choix select { appearance: none; -webkit-appearance: none; padding-right: 42px; cursor: pointer; }
+.choix::after {
+  content: ""; position: absolute; top: 50%; right: 17px;
+  width: 9px; height: 9px; margin-top: -7px;
+  border-right: 2px solid var(--ink); border-bottom: 2px solid var(--ink);
+  transform: rotate(45deg);
+  pointer-events: none;
+}
+.cases { margin: 0; padding: 0; border: 0; display: grid; gap: 10px; min-width: 0; }
+.cases__liste { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 8px 16px; }
+.case { display: flex; align-items: center; gap: 9px; cursor: pointer; }
+.case input { width: 18px; height: 18px; margin: 0; accent-color: var(--sign); }
+.deux-colonnes { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+/* Liste de suggestions sous un champ */
+.combo { position: relative; }
+.suggestions {
+  position: absolute; z-index: 1200; top: calc(100% + 6px); left: 0; right: 0;
+  margin: 0; padding: 4px; list-style: none;
+  max-height: 330px; overflow-y: auto;
+  background: var(--surface);
+  border: 1px solid var(--rule); border-radius: 8px;
+  box-shadow: 0 12px 30px rgb(0 0 0 / .2);
+}
+.suggestions li { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; padding: 9px 10px; border-radius: 5px; }
+.suggestions li[data-k] { cursor: pointer; }
+.suggestions li[data-k]:hover { background: color-mix(in srgb, var(--ink) 6%, var(--surface)); }
+.suggestions li[aria-selected="true"] { background: color-mix(in srgb, var(--sign) 16%, var(--surface)); }
+.suggestions__nom { min-width: 0; font-weight: 500; }
+.suggestions__dep { font-weight: 400; color: var(--muted); }
+.suggestions__detail { flex-shrink: 0; color: var(--muted); font-size: 13px; font-variant-numeric: tabular-nums; text-align: right; }
+.suggestions__message { color: var(--muted); }
+
+/* Étiquettes d'intervention */
+.puces { display: flex; flex-wrap: wrap; gap: 4px; }
+.puce {
+  padding: 3px 6px 2px;
+  font: 600 11px/1 var(--font-sign); letter-spacing: .03em;
+  white-space: nowrap;
+  border-radius: 3px;
+  box-shadow: inset 0 0 0 1px currentColor;
+  opacity: .8;
+}
+.puce--choisie { background: var(--fg, var(--ink)); color: var(--bg, var(--surface)); box-shadow: none; opacity: 1; }
+
+/* Fenêtres de saisie et de confirmation */
+.fenetre {
+  width: min(580px, calc(100vw - 32px));
+  max-height: calc(100vh - 40px);
+  padding: 0;
+  color: var(--ink); background: var(--surface);
+  border: 0; border-radius: 10px;
+  box-shadow: 0 20px 60px rgb(0 0 0 / .35);
+}
+.fenetre::backdrop { background: rgb(8 12 10 / .55); }
+.fenetre__formulaire { display: grid; gap: 18px; padding: 22px 22px 18px; }
+.fenetre__titre { margin: 0; font: 700 24px/1.1 var(--font-sign); text-wrap: balance; }
+.fenetre__corps { display: grid; gap: 16px; }
+.fenetre__corps > p { margin: 0; max-width: 60ch; }
+.fenetre__erreur { margin: 0; color: var(--alert); font-weight: 500; }
+.fenetre__actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 10px; }
+
+/* Message bref après une action (« Absence ajoutée. ») */
+.annonce {
+  position: fixed; z-index: 2000; left: 50%; bottom: 24px;
+  max-width: calc(100vw - 32px);
+  margin: 0; padding: 10px 16px;
+  transform: translateX(-50%);
+  color: var(--ground); background: var(--ink);
+  border-radius: 8px;
+  font-weight: 500;
+  box-shadow: 0 8px 24px rgb(0 0 0 / .25);
+}
+.annonce:empty { display: none; }
+
+/* Page de connexion : un panneau blanc à listel noir */
+.page-connexion { min-height: 100vh; display: grid; place-items: center; padding: 24px 16px; }
+.connexion {
+  width: min(400px, 100%);
+  display: grid; gap: 18px;
+  padding: 30px 26px;
+  background: var(--surface);
+  border-radius: 10px;
+  box-shadow: inset 0 0 0 4px var(--surface), inset 0 0 0 6px var(--ink), 0 10px 30px rgb(0 0 0 / .12);
+}
+.connexion__formulaire { display: grid; gap: 16px; }
+
+@media (max-width: 600px) {
+  .deux-colonnes { grid-template-columns: 1fr; }
+  .barre { padding: 8px 16px; }
+}
+
+/* ─── iPhone : application plein écran ─────────────────────────────────
+   La barre passe sous l'heure et la batterie ; les marges suivent l'encoche et la barre d'accueil. */
+html { -webkit-text-size-adjust: 100%; }
+body { -webkit-tap-highlight-color: transparent; }
+.barre {
+  padding-top: max(8px, env(safe-area-inset-top));
+  padding-left: max(20px, env(safe-area-inset-left));
+  padding-right: max(20px, env(safe-area-inset-right));
+}
+.annonce { bottom: calc(24px + env(safe-area-inset-bottom)); }
+.fenetre { max-height: calc(100dvh - 40px); overflow: auto; overscroll-behavior: contain; }
+@media (max-width: 600px) {
+  .barre { padding-left: max(16px, env(safe-area-inset-left)); padding-right: max(16px, env(safe-area-inset-right)); }
+  .barre__nav a { padding: 12px 10px 9px; }
+  .fenetre__formulaire { padding: 20px 18px 16px; }
+  .fenetre__actions .bouton { flex: 1; }
+}
+@media (pointer: coarse) {
+  .bouton--petit { min-height: 40px; padding-inline: 12px; }
+}
