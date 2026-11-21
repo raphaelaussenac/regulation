@@ -77,7 +77,8 @@ h1 { margin: 0; font: 700 34px/1 var(--font-sign); letter-spacing: -.01em; text-
   padding: 8px 20px;
   background: var(--bar-bg); color: var(--bar-fg);
 }
-.barre__marque { font: 700 18px/1.1 var(--font-sign); text-decoration: none; }
+.barre__marque { margin: 0; display: flex; align-items: baseline; gap: 8px; font: 700 18px/1.1 var(--font-sign); }
+.barre__version { font: 500 13px/1 var(--font-text); letter-spacing: .02em; opacity: .7; font-variant-numeric: tabular-nums; }
 .barre__nav { display: flex; gap: 2px; }
 .barre__nav a {
   padding: 8px 10px 6px;
@@ -238,21 +239,31 @@ h1 { margin: 0; font: 700 34px/1 var(--font-sign); letter-spacing: -.01em; text-
    La barre passe sous l'heure et la batterie ; les marges suivent l'encoche et la barre d'accueil. */
 html { -webkit-text-size-adjust: 100%; }
 body { -webkit-tap-highlight-color: transparent; }
-/* La barre reste en haut pendant le défilement. Sous l'heure et la batterie, une marge
-   supplémentaire l'éloigne du voile flou qu'iOS dessine en haut de l'écran. */
+/* La barre reste en haut pendant le défilement. Quand iOS fait passer la page sous l'heure
+   et la batterie, il dessine en dessous un voile flou d'environ deux fois leur hauteur :
+   la barre commence après ce voile. Sans zone réservée (navigateur, ordinateur), rien ne change. */
 .barre {
   position: sticky; top: 0; z-index: 1100;
-  padding-top: calc(env(safe-area-inset-top, 0px) + 10px);
+  padding-top: calc(env(safe-area-inset-top, 0px) * 2 + 10px);
   padding-left: max(20px, env(safe-area-inset-left));
   padding-right: max(20px, env(safe-area-inset-right));
 }
 .annonce { bottom: calc(24px + env(safe-area-inset-bottom)); }
 .fenetre { max-height: calc(100dvh - 40px); overflow: auto; overscroll-behavior: contain; }
 @media (max-width: 600px) {
-  .barre { padding-left: max(16px, env(safe-area-inset-left)); padding-right: max(16px, env(safe-area-inset-right)); }
-  .barre { padding-bottom: 6px; row-gap: 2px; }
-  .barre__nav { margin-left: -10px; }
-  .barre__nav a { padding: 12px 10px 10px; font-size: 16px; }
+  /* Sur téléphone : le nom et la version sur une ligne, puis deux grands onglets. */
+  .barre {
+    display: grid; gap: 8px;
+    padding-left: max(16px, env(safe-area-inset-left)); padding-right: max(16px, env(safe-area-inset-right));
+    padding-bottom: 0;
+  }
+  .barre__nav { display: grid; grid-template-columns: 1fr 1fr; gap: 0; }
+  .barre__nav a {
+    display: grid; place-items: center;
+    min-height: 48px; padding: 4px 8px 0;
+    font-size: 17px;
+    border-bottom-width: 3px;
+  }
   .fenetre__formulaire { padding: 20px 18px 16px; }
   .fenetre__actions .bouton { flex: 1; }
 }

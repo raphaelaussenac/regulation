@@ -3,6 +3,9 @@ import { traiter } from './stockage.js';
 
 export const $ = id => document.getElementById(id);
 
+// Numéro de version, défini une seule fois dans version.js (affiché dans la barre du haut).
+export const VERSION_APPLI = globalThis.VERSION_APPLI ?? '?';
+
 export const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
 export const pluriel = (n, mot) => `${n} ${mot}${n > 1 ? 's' : ''}`;
@@ -92,7 +95,7 @@ export function ouvrirFenetre({ titre, corps, bouton = 'Enregistrer', danger = f
 export function barre({ entreprise, page }) {
   const lien = (href, texte, cle) => `<a href="${href}"${page === cle ? ' aria-current="page"' : ''}>${texte}</a>`;
   $('barre').innerHTML = `
-    <a class="barre__marque" href="./">${esc(entreprise)}</a>
+    <p class="barre__marque">${esc(entreprise)}<span class="barre__version">v${esc(VERSION_APPLI)}</span></p>
     <nav class="barre__nav" aria-label="Pages">
       ${lien('./', 'Régulation', 'regulation')}${lien('gestion.html', 'Gestion', 'gestion')}
     </nav>`;

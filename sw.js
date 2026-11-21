@@ -1,12 +1,13 @@
 // Garde une copie des fichiers de l'application dans le téléphone.
 // En ligne, chaque fichier est redemandé au site (les mises à jour arrivent tout de suite) ;
 // sans réseau, la copie gardée sert. Les cartes, communes et itinéraires ne passent pas par ici.
-// Changer VERSION à chaque mise à jour pour renouveler la copie.
-const VERSION = '2026-11-21-c';
-const CACHE = `depannage-${VERSION}`;
+// La copie est renouvelée à chaque nouveau numéro de version (version.js).
+importScripts('version.js');
+const CACHE = `depannage-${self.VERSION_APPLI}`;
 const FICHIERS = [
   './',
   'index.html',
+  'version.js',
   'gestion.html',
   'commun.js',
   'stockage.js',
