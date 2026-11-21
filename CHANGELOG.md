@@ -1,5 +1,9 @@
 # Changements
 
+## v0.2.4 · 21 novembre 2026
+
+- Changement de position : on choisit une commune, comme pour la commune du client (nom ou code postal ; communes du département d'abord, puis celles des autres départements). Les adresses précises ne sont plus proposées ; le technicien part de la mairie de la commune.
+
 ## v0.2.3 · 21 novembre 2026
 
 - Régulation : le panneau commence directement par « Commune du client » (titre « Qui appeler ? » et texte d'explication retirés).

@@ -1,5 +1,5 @@
 // Régulation : classe les techniciens disponibles par distance routière jusqu'à la commune du client.
-import { $, esc, api, normaliser, barre, dateDuJour, fmtDate, annoncer, autocompleteAdresse, positionTemporaire, centreDuContour } from './commun.js';
+import { $, esc, api, normaliser, barre, dateDuJour, fmtDate, annoncer, positionTemporaire } from './commun.js';
 
 const [moi, donneesServeur, geo] = await Promise.all([
   api('/api/moi'),
@@ -18,7 +18,6 @@ function avecPositionsDuJour(d) {
   };
 }
 let D = avecPositionsDuJour(donneesServeur); // paramètres, interventions, techniciens, absences
-const centreDepartement = centreDuContour(geo?.contour); // favorise les adresses proches dans la recherche
 
 const champ = $('commune');
 const boutonEffacer = $('effacer');
@@ -271,9 +270,9 @@ function ligneDispo(l, rang) {
     ? `<span class="position position--edition">
         <span class="combo position__combo">
           <input id="position-${esc(t.id)}" class="position__champ" autocomplete="off" spellcheck="false" enterkeyhint="search"
-                 placeholder="Nouvelle adresse ou commune" aria-label="Nouvelle position de ${esc(t.nom)}"
+                 autocapitalize="words" placeholder="Nom de la commune ou code postal" aria-label="Commune où se trouve ${esc(t.nom)}"
                  role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="position-liste-${esc(t.id)}">
-          <ul id="position-liste-${esc(t.id)}" class="suggestions" role="listbox" aria-label="Adresses proposées" hidden></ul>
+          <ul id="position-liste-${esc(t.id)}" class="suggestions" role="listbox" aria-label="Communes proposées" hidden></ul>
         </span>
         <button type="button" class="bouton-position" data-annuler-position="${esc(t.id)}">Annuler</button>
       </span>`
@@ -686,7 +685,7 @@ function brancherEdition() {
   const champ = t && $(`position-${t.id}`);
   if (!champ) return;
   const boite = $(`position-liste-${t.id}`);
-  autocompleteAdresse(champ, boite, choix => { if (choix) enregistrerPosition(t, choix); }, () => centreDepartement);
+  autocompleteCommune(champ, boite, c => enregistrerPosition(t, { ville: c.nom, adresse: '', lat: c.lat, lon: c.lon }));
   champ.addEventListener('keydown', e => {
     if (e.key === 'Escape' && boite.hidden) fermerEdition();
   });
@@ -761,6 +760,97 @@ blocClassement.addEventListener('click', e => {
   else if (b.dataset.annulerPosition) fermerEdition();
   else ouvrirEdition(t);
 });
+
+// Liste de communes sous le champ de la position temporaire, comme pour la commune du client :
+// celles du département d'abord, complétées par celles des autres départements.
+function autocompleteCommune(champ, boite, surChoix) {
+  let liste = [];
+  let actif = -1;
+  let minuterie = 0;
+  let requete = null;
+
+  const fermer = () => {
+    boite.hidden = true;
+    champ.setAttribute('aria-expanded', 'false');
+    champ.removeAttribute('aria-activedescendant');
+  };
+  const rendre = (message = MSG_AUCUNE) => {
+    const q = normaliser(champ.value);
+    if (!q) return fermer();
+    const numerique = /^\d+$/.test(q);
+    boite.innerHTML = liste.length
+      ? liste.map((c, k) => {
+          const cps = numerique ? c.cp.filter(cp => cp.startsWith(q)) : c.cp;
+          const dep = c.dep !== DEPARTEMENT ? ` <span class="suggestions__dep">(${esc(c.dep)})</span>` : '';
+          return `<li role="option" id="${boite.id}-${k}" data-k="${k}" aria-selected="${k === actif}">
+            <span class="suggestions__nom">${esc(c.nom)}${dep}</span>
+            <span class="suggestions__detail">${esc(cps.join(', '))}</span>
+          </li>`;
+        }).join('')
+      : `<li class="suggestions__message" role="presentation">${esc(message)}</li>`;
+    boite.hidden = false;
+    champ.setAttribute('aria-expanded', 'true');
+    if (actif >= 0) champ.setAttribute('aria-activedescendant', `${boite.id}-${actif}`);
+    else champ.removeAttribute('aria-activedescendant');
+  };
+  const choisirCommune = c => {
+    clearTimeout(minuterie);
+    requete?.abort();
+    champ.value = c.nom;
+    fermer();
+    surChoix(c);
+  };
+
+  champ.addEventListener('input', () => {
+    clearTimeout(minuterie);
+    requete?.abort();
+    liste = chercherLocal(champ.value);
+    actif = liste.length ? 0 : -1;
+    const q = normaliser(champ.value);
+    const utile = /^\d{5}$/.test(q)
+      ? !COMMUNES.some(c => c.cp.includes(q))
+      : !/^\d+$/.test(q) && q.length >= 3 && liste.length < 5;
+    if (utile) {
+      const texte = champ.value;
+      const ctrl = new AbortController();
+      requete = ctrl;
+      minuterie = setTimeout(async () => {
+        try {
+          const autres = await chercherFrance(q, ctrl.signal);
+          if (champ.value !== texte) return;
+          liste = [...liste, ...autres];
+          if (actif < 0 && liste.length) actif = 0;
+          rendre();
+        } catch {
+          if (!ctrl.signal.aborted && champ.value === texte) rendre(MSG_HORS_LIGNE);
+        }
+      }, 250);
+    }
+    rendre(utile ? MSG_RECHERCHE : MSG_AUCUNE);
+  });
+
+  champ.addEventListener('keydown', e => {
+    if ((e.key === 'ArrowDown' || e.key === 'ArrowUp') && liste.length) {
+      e.preventDefault();
+      actif = (actif + (e.key === 'ArrowDown' ? 1 : -1) + liste.length) % liste.length;
+      rendre();
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      const c = liste[actif] ?? liste[0];
+      if (c) choisirCommune(c);
+    } else if (e.key === 'Escape' && !boite.hidden) {
+      e.preventDefault();
+      e.stopImmediatePropagation(); // ferme la liste sans quitter la saisie
+      fermer();
+    }
+  });
+  champ.addEventListener('blur', fermer);
+  boite.addEventListener('mousedown', e => {
+    e.preventDefault(); // garde le focus dans le champ
+    const li = e.target.closest('li[data-k]');
+    if (li) choisirCommune(liste[Number(li.dataset.k)]);
+  });
+}
 
 // ─── Saisie et suggestions ────────────────────────────────────────
 const MSG_RECHERCHE = 'Recherche dans les autres départements…';
