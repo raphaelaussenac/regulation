@@ -1,12 +1,24 @@
 // Régulation : classe les techniciens disponibles par distance routière jusqu'à la commune du client.
-import { $, esc, api, normaliser, barre, dateDuJour, fmtDate } from './commun.js';
+import { $, esc, api, normaliser, barre, dateDuJour, fmtDate, ouvrirFenetre, annoncer, autocompleteAdresse, positionDuJour, centreDuContour } from './commun.js';
 
 const [moi, donneesServeur, geo] = await Promise.all([
   api('/api/moi'),
   api('/api/donnees'),
   api('/api/geo').catch(e => { console.warn(e.message); return null; }),
 ]);
-let D = donneesServeur; // paramètres, interventions, techniciens, absences
+// Position du jour : un technicien qui a une position temporaire en cours part de là, et non de son point
+// de départ habituel. Ses champs ville et adresse restent ceux du point de départ ; « temporaire » décrit l'autre.
+function avecPositionsDuJour(d) {
+  const jour = dateDuJour();
+  return {
+    ...d,
+    techniciens: d.techniciens.map(t => {
+      const p = positionDuJour(t, jour);
+      return p ? { ...t, lat: p.lat, lon: p.lon, temporaire: p } : t;
+    }),
+  };
+}
+let D = avecPositionsDuJour(donneesServeur); // paramètres, interventions, techniciens, absences
 
 const champ = $('commune');
 const boutonEffacer = $('effacer');
@@ -253,14 +265,21 @@ function ligneDispo(l, rang) {
   const tel = t.tel
     ? `<a class="panneau__tel" href="tel:${esc(t.tel.replace(/[^\d+]/g, ''))}">${esc(t.tel)}</a>`
     : '';
+  const temp = t.temporaire;
+  const base = temp
+    ? `<span class="panneau__temp">Position temporaire : ${esc(temp.adresse || temp.ville)} · ${temp.jusquau > jourAffiche ? `jusqu’au ${fmtDate(temp.jusquau)}` : 'aujourd’hui'}</span>
+       <span class="panneau__base">Habituellement : ${esc(t.ville)}</span>`
+    : `<span class="panneau__base">${esc(t.ville)}</span>`;
+  const action = `<button type="button" class="panneau__action" data-position="${esc(t.id)}">${temp ? 'Modifier la position' : 'Changer de position'}</button>`;
   return `<li class="panneau${proche ? ' panneau--proche' : ''}" data-id="${esc(l.id)}">
     ${resultat ? `<span class="panneau__rang" aria-hidden="true">${rang + 1}</span>` : ''}
     <span class="panneau__qui">
       ${proche ? '<span class="panneau__mention">Le plus proche</span>' : ''}
       <span class="panneau__nom">${esc(t.nom)}</span>
-      <span class="panneau__base">${esc(t.ville)}</span>
+      ${base}
       ${tel}
       ${puces(t)}
+      ${action}
     </span>
     <span class="panneau__dist">${dist}</span>
   </li>`;
@@ -273,7 +292,7 @@ function ligneIndispo(l) {
     : `Ne fait pas : ${intervention?.court ?? ''} (${modeActuel().toLowerCase()})`;
   return `<li class="indispo" data-id="${esc(l.id)}">
     <span class="indispo__nom">${esc(l.t.nom)}</span>
-    <span class="indispo__base">${esc(l.t.ville)}</span>
+    <span class="indispo__base">${esc(l.t.temporaire?.ville ?? l.t.ville)}</span>
     <span class="indispo__raison">${esc(raison)}</span>
   </li>`;
 }
@@ -451,7 +470,7 @@ function construireMarqueurs() {
   for (const m of marqueurs.values()) m.remove();
   marqueurs.clear();
   for (const t of D.techniciens) {
-    const m = L.marker([t.lat, t.lon], { icon: icone(t.nom, 'pin--tech'), title: `${t.nom} · ${t.ville}`, keyboard: false, riseOnHover: true })
+    const m = L.marker([t.lat, t.lon], { icon: icone(t.nom, 'pin--tech'), title: `${t.nom} · ${t.temporaire ? `${t.temporaire.ville} (position temporaire)` : t.ville}`, keyboard: false, riseOnHover: true })
       .on('mouseover', () => mettreEnAvant(t.id))
       .on('mouseout', () => mettreEnAvant(null))
       .addTo(carte);
@@ -604,7 +623,7 @@ choixType.addEventListener('change', () => {
 async function rafraichir() {
   let nouvelles;
   try {
-    nouvelles = await api('/api/donnees');
+    nouvelles = avecPositionsDuJour(await api('/api/donnees'));
   } catch {
     return;
   }
@@ -632,6 +651,81 @@ document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'visible' && Date.now() - derniereVerification > 60000) verifier();
 });
 setInterval(() => { if (document.visibilityState === 'visible') verifier(); }, 5 * 60000);
+
+// ─── Position temporaire d'un technicien ──────────────────────────
+// Le bouton de chaque vignette : le technicien est ailleurs aujourd'hui (ou jusqu'à une date) ;
+// le classement part de là, puis de nouveau de son point de départ habituel une fois la date passée.
+const centreDepartement = centreDuContour(geo?.contour);
+
+async function rechargerEquipe() {
+  D = avecPositionsDuJour(await api('/api/donnees'));
+  construireMarqueurs();
+  memoire.clear();
+  if (etatPage.client) await calculer(etatPage.client);
+  else afficher();
+}
+
+function changerPosition(t) {
+  const temp = t.temporaire;
+  let position = temp ? { ville: temp.ville, adresse: temp.adresse, lat: temp.lat, lon: temp.lon } : null;
+  const jour = dateDuJour();
+  ouvrirFenetre({
+    titre: `Position de ${t.nom}`,
+    corps: `
+      <p>Point de départ habituel : <strong>${esc(t.adresse || t.ville)}</strong>. Jusqu’à la date choisie, le classement part de la position ci-dessous ; ensuite, de nouveau du point de départ habituel.</p>
+      <div class="champ">
+        <label for="f-position">Position temporaire</label>
+        <div class="combo">
+          <input id="f-position" autocomplete="off" spellcheck="false" placeholder="Adresse ou commune" value="${esc(temp ? temp.adresse || temp.ville : '')}"
+                 enterkeyhint="search" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="f-position-liste">
+          <ul id="f-position-liste" class="suggestions" role="listbox" aria-label="Adresses proposées" hidden></ul>
+        </div>
+        <p id="f-position-aide" class="aide"></p>
+      </div>
+      <div class="champ">
+        <label for="f-jusquau">Jusqu’au (inclus)</label>
+        <input id="f-jusquau" name="jusquau" type="date" required value="${esc(temp?.jusquau ?? jour)}" min="${jour}">
+      </div>
+      ${temp ? '<button type="button" class="bouton bouton--large" data-retour>Revenir dès maintenant au point de départ habituel</button>' : ''}`,
+    apresOuverture(fenetre) {
+      const aide = fenetre.querySelector('#f-position-aide');
+      const decrire = () => {
+        aide.textContent = position
+          ? `Position retenue : ${position.adresse || `${position.ville} (centre de la commune)`}`
+          : 'Tapez une adresse ou une commune, puis choisissez-la dans la liste.';
+      };
+      decrire();
+      autocompleteAdresse(fenetre.querySelector('#f-position'), fenetre.querySelector('#f-position-liste'), choix => {
+        position = choix;
+        decrire();
+      }, () => centreDepartement);
+      fenetre.querySelector('[data-retour]')?.addEventListener('click', async () => {
+        try {
+          await api(`/api/techniciens/${t.id}/position`, { methode: 'DELETE' });
+        } catch (e) {
+          annoncer(e.message);
+          return;
+        }
+        fenetre.close();
+        await rechargerEquipe();
+        annoncer(`${t.nom} repart de son point de départ habituel.`);
+      });
+    },
+    async valider(formulaire) {
+      if (!position) throw new Error('Position temporaire : choisissez une adresse ou une commune dans la liste proposée.');
+      const jusquau = new FormData(formulaire).get('jusquau');
+      await api(`/api/techniciens/${t.id}/position`, { methode: 'PUT', corps: { ...position, jusquau } });
+      await rechargerEquipe();
+      annoncer(`Position de ${t.nom} : ${position.ville}${jusquau > jour ? ` jusqu’au ${fmtDate(jusquau)}` : ' aujourd’hui'}.`);
+    },
+  });
+}
+
+blocClassement.addEventListener('click', e => {
+  const b = e.target.closest('[data-position]');
+  const t = b && D.techniciens.find(x => x.id === b.dataset.position);
+  if (t) changerPosition(t);
+});
 
 // ─── Saisie et suggestions ────────────────────────────────────────
 const MSG_RECHERCHE = 'Recherche dans les autres départements…';

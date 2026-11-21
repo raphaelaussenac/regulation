@@ -100,3 +100,122 @@ export function barre({ entreprise, page }) {
       ${lien('./', 'Régulation', 'regulation')}${lien('gestion.html', 'Gestion', 'gestion')}
     </nav>`;
 }
+
+// Position du jour d'un technicien : sa position temporaire si elle court encore, sinon rien.
+export function positionDuJour(t, jour = dateDuJour()) {
+  const p = t.positionTemporaire;
+  return p && p.jusquau >= jour ? p : null;
+}
+
+// Centre approximatif d'un département, d'après son contour.
+export function centreDuContour(contour) {
+  const points = (contour ?? []).flat();
+  if (!points.length) return null;
+  const lats = points.map(p => p[0]);
+  const lons = points.map(p => p[1]);
+  return { lat: (Math.min(...lats) + Math.max(...lats)) / 2, lon: (Math.min(...lons) + Math.max(...lons)) / 2 };
+}
+
+// ─── Recherche d'adresse (IGN Géoplateforme) ──────────────────────
+// Sert au point de départ d'un technicien (Gestion) et à sa position du jour (Régulation).
+async function chercherAdresses(q, signal, centre) {
+  const params = new URLSearchParams({ q, limit: '6', autocomplete: '1' });
+  if (centre) {
+    params.set('lat', centre.lat.toFixed(4));
+    params.set('lon', centre.lon.toFixed(4));
+  }
+  const rep = await fetch(`https://data.geopf.fr/geocodage/search?${params}`, { signal });
+  if (!rep.ok) throw new Error(`HTTP ${rep.status}`);
+  const { features = [] } = await rep.json();
+  return features.map(f => {
+    const p = f.properties;
+    const [lon, lat] = f.geometry.coordinates;
+    const commune = p.type === 'municipality';
+    return {
+      libelle: p.label,
+      detail: commune ? `Commune · ${p.postcode ?? ''}` : 'Adresse',
+      ville: p.city || p.name || p.label,
+      adresse: commune ? '' : p.label,
+      lat,
+      lon,
+    };
+  });
+}
+
+// Liste de suggestions sous le champ ; « choisir » reçoit la position retenue, ou null si le texte change.
+// « centre » (facultatif) renvoie le centre du département, pour proposer d'abord les adresses proches.
+export function autocompleteAdresse(champ, boite, choisir, centre = () => null) {
+  let resultats = [];
+  let actif = -1;
+  let minuterie = 0;
+  let requete = null;
+
+  const afficher = message => {
+    boite.innerHTML = resultats.length
+      ? resultats.map((r, k) => `
+          <li role="option" id="${boite.id}-${k}" data-k="${k}" aria-selected="${k === actif}">
+            <span class="suggestions__nom">${esc(r.libelle)}</span>
+            <span class="suggestions__detail">${esc(r.detail)}</span>
+          </li>`).join('')
+      : message ? `<li class="suggestions__message" role="presentation">${esc(message)}</li>` : '';
+    boite.hidden = !boite.innerHTML;
+    champ.setAttribute('aria-expanded', String(!boite.hidden));
+    if (actif >= 0 && resultats.length) champ.setAttribute('aria-activedescendant', `${boite.id}-${actif}`);
+    else champ.removeAttribute('aria-activedescendant');
+  };
+  const selectionner = r => {
+    champ.value = r.libelle;
+    resultats = [];
+    afficher();
+    choisir(r);
+  };
+
+  champ.addEventListener('input', () => {
+    choisir(null);
+    clearTimeout(minuterie);
+    requete?.abort();
+    const q = champ.value.trim();
+    if (q.length < 3) {
+      resultats = [];
+      return afficher();
+    }
+    minuterie = setTimeout(async () => {
+      requete = new AbortController();
+      try {
+        resultats = await chercherAdresses(q, requete.signal, centre());
+        actif = resultats.length ? 0 : -1;
+        afficher('Aucune adresse trouvée. Essayez avec le nom de la commune.');
+      } catch (e) {
+        if (e.name === 'AbortError') return;
+        resultats = [];
+        afficher('Recherche d’adresse impossible pour le moment. Vérifiez la connexion internet.');
+      }
+    }, 250);
+  });
+
+  champ.addEventListener('keydown', e => {
+    if (boite.hidden || !resultats.length) return;
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      e.preventDefault();
+      actif = (actif + (e.key === 'ArrowDown' ? 1 : -1) + resultats.length) % resultats.length;
+      afficher();
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      if (resultats[actif]) selectionner(resultats[actif]);
+    } else if (e.key === 'Escape') {
+      e.preventDefault(); // ferme la liste sans fermer la fenêtre
+      resultats = [];
+      afficher();
+    }
+  });
+  champ.addEventListener('blur', () => {
+    resultats = [];
+    afficher();
+  });
+  boite.addEventListener('mousedown', e => {
+    e.preventDefault(); // garde le focus dans le champ
+    const li = e.target.closest('li[data-k]');
+    if (li) selectionner(resultats[Number(li.dataset.k)]);
+  });
+}
+

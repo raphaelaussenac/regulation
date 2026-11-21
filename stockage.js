@@ -392,6 +392,39 @@ route('DELETE', '/api/techniciens/:id', ({ params }) => {
   enregistrer(d);
 });
 
+// Position temporaire : là où se trouve le technicien jusqu'à une date (incluse), à la place de son point de départ.
+// Passé cette date, il repart de son point de départ habituel sans rien faire.
+function lirePosition(corps) {
+  if (corps.lat == null || corps.lon == null) {
+    refuser('Position du jour : choisissez une adresse ou une commune dans la liste proposée.');
+  }
+  const jusquau = dateISO(corps.jusquau, 'Jusqu’au');
+  if (jusquau < aujourdhui()) refuser('La date de fin est déjà passée.');
+  return {
+    ville: texte(corps.ville, 'Commune', { max: 80 }),
+    adresse: texte(corps.adresse, 'Adresse', { max: 200, requis: false }),
+    lat: nombre(corps.lat, 'Latitude', -90, 90),
+    lon: nombre(corps.lon, 'Longitude', -180, 180),
+    jusquau,
+  };
+}
+
+route('PUT', '/api/techniciens/:id/position', ({ params, corps }) => {
+  const d = lire();
+  const technicien = trouver(d.techniciens, params.id, 'Technicien');
+  technicien.positionTemporaire = lirePosition(corps);
+  enregistrer(d);
+  return technicien;
+});
+
+route('DELETE', '/api/techniciens/:id/position', ({ params }) => {
+  const d = lire();
+  const technicien = trouver(d.techniciens, params.id, 'Technicien');
+  delete technicien.positionTemporaire;
+  enregistrer(d);
+  return technicien;
+});
+
 // Absences
 route('POST', '/api/absences', ({ corps }) => {
   const d = lire();
@@ -476,7 +509,14 @@ export function importer(objet) {
       techniciens: [],
       absences: [],
     };
-    d.techniciens = source.techniciens.map(t => ({ id: texte(t.id, 'Identifiant de technicien', { max: 40 }), ...lireTechnicien(d, t) }));
+    d.techniciens = source.techniciens.map(t => {
+      const technicien = { id: texte(t.id, 'Identifiant de technicien', { max: 40 }), ...lireTechnicien(d, t) };
+      // Une position temporaire encore valable est gardée ; une position périmée ou abîmée est ignorée.
+      if (t.positionTemporaire) {
+        try { technicien.positionTemporaire = lirePosition(t.positionTemporaire); } catch { /* ignorée */ }
+      }
+      return technicien;
+    });
     const ids = new Set(d.techniciens.map(t => t.id));
     d.absences = (source.absences ?? [])
       .filter(a => ids.has(a.technicien))

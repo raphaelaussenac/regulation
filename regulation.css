@@ -69,6 +69,16 @@ html, body { height: 100%; }
   color: inherit;
 }
 .panneau .puces { margin-top: 6px; }
+/* Position temporaire : écrite en gras, au-dessus du point de départ habituel. */
+.panneau__temp { font-size: 14px; font-weight: 600; }
+.panneau__action {
+  justify-self: start;
+  min-height: 36px; margin-top: 6px; padding: 4px 0;
+  border: 0; background: none; color: inherit;
+  font: 600 14px/1.2 var(--font-text);
+  text-decoration: underline; text-underline-offset: 3px;
+  cursor: pointer;
+}
 .panneau__dist { display: grid; justify-items: end; gap: 4px; align-self: start; padding-top: 4px; text-align: right; white-space: nowrap; }
 .panneau__km { font: 700 25px/1 var(--font-sign); font-variant-numeric: tabular-nums; }
 .panneau__km small { margin-left: 2px; font-size: 14px; font-weight: 600; }

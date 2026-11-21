@@ -1,5 +1,5 @@
 // Gestion : techniciens, absences, types d'intervention, paramètres et sauvegarde.
-import { $, esc, api, barre, ouvrirFenetre, annoncer, dateDuJour, fmtDate, fmtDateLongue, pluriel } from './commun.js';
+import { $, esc, api, barre, ouvrirFenetre, annoncer, dateDuJour, fmtDate, fmtDateLongue, pluriel, autocompleteAdresse, positionDuJour, centreDuContour } from './commun.js';
 import { exporter, importer, derniereSauvegarde } from './stockage.js';
 
 let D = await api('/api/donnees');
@@ -7,13 +7,7 @@ let D = await api('/api/donnees');
 // Centre du département : favorise les adresses proches lors de la saisie d'un point de départ.
 let centreDepartement = null;
 api('/api/geo')
-  .then(geo => {
-    const points = geo.contour.flat();
-    if (!points.length) return;
-    const lats = points.map(p => p[0]);
-    const lons = points.map(p => p[1]);
-    centreDepartement = { lat: (Math.min(...lats) + Math.max(...lats)) / 2, lon: (Math.min(...lons) + Math.max(...lons)) / 2 };
-  })
+  .then(geo => { centreDepartement = centreDuContour(geo.contour); })
   .catch(() => {});
 
 function afficherEntete() {
@@ -68,17 +62,29 @@ function disponibilite(t) {
   return `<span class="statut">Absent du ${fmtDate(prochaine.du)} au ${fmtDate(prochaine.au)}</span>`;
 }
 
+// Position temporaire en cours, réglée depuis la Régulation.
+function positionTemporaire(t) {
+  const p = positionDuJour(t);
+  if (!p) return '';
+  const quand = p.jusquau > dateDuJour() ? `jusqu’au ${fmtDate(p.jusquau)}` : 'aujourd’hui';
+  return `<span class="statut statut--absent tableau__detail">Position temporaire : ${esc(p.adresse || p.ville)} · ${quand}</span>`;
+}
+
 // ─── Rendus ───────────────────────────────────────────────────────
 function rendreTechniciens() {
   $('compte-techniciens').textContent = pluriel(D.techniciens.length, 'technicien');
   $('corps-techniciens').innerHTML = trier(D.techniciens, t => t.nom).map(t => `
     <tr>
       <td class="tableau__titre"><span class="tableau__nom">${esc(t.nom)}</span>${t.tel ? `<a class="tableau__detail" href="tel:${esc(t.tel.replace(/[^\d+]/g, ''))}">${esc(t.tel)}</a>` : ''}</td>
-      ${cellule('Point de départ', `${esc(t.ville)}${t.adresse ? `<span class="tableau__detail">${esc(t.adresse)}</span>` : ''}`)}
+      ${cellule('Point de départ', `${esc(t.ville)}${t.adresse ? `<span class="tableau__detail">${esc(t.adresse)}</span>` : ''}${positionTemporaire(t)}`)}
       ${cellule('Dépannage', puces(t.depannage))}
       ${cellule('Entretien', puces(t.entretien))}
       ${cellule('Disponibilité', disponibilite(t))}
-      ${actions(bouton('modifier-technicien', t.id, 'Modifier'), bouton('supprimer-technicien', t.id, 'Supprimer', true))}
+      ${actions(
+        bouton('modifier-technicien', t.id, 'Modifier'),
+        positionDuJour(t) ? bouton('annuler-position', t.id, 'Fin de la position temporaire') : '',
+        bouton('supprimer-technicien', t.id, 'Supprimer', true),
+      )}
     </tr>`).join('') || ligneVide(6, 'Aucun technicien. Ajoutez le premier avec le bouton « Ajouter un technicien ».');
 }
 
@@ -121,107 +127,6 @@ function toutRendre() {
   rendreTechniciens();
   rendreAbsences();
   rendreInterventions();
-}
-
-// ─── Point de départ d'un technicien : recherche d'adresse (IGN Géoplateforme) ───
-async function chercherAdresses(q, signal) {
-  const params = new URLSearchParams({ q, limit: '6', autocomplete: '1' });
-  if (centreDepartement) {
-    params.set('lat', centreDepartement.lat.toFixed(4));
-    params.set('lon', centreDepartement.lon.toFixed(4));
-  }
-  const rep = await fetch(`https://data.geopf.fr/geocodage/search?${params}`, { signal });
-  if (!rep.ok) throw new Error(`HTTP ${rep.status}`);
-  const { features = [] } = await rep.json();
-  return features.map(f => {
-    const p = f.properties;
-    const [lon, lat] = f.geometry.coordinates;
-    const commune = p.type === 'municipality';
-    return {
-      libelle: p.label,
-      detail: commune ? `Commune · ${p.postcode ?? ''}` : 'Adresse',
-      ville: p.city || p.name || p.label,
-      adresse: commune ? '' : p.label,
-      lat,
-      lon,
-    };
-  });
-}
-
-// Liste de suggestions sous le champ ; « choisir » reçoit la position retenue, ou null si le texte change.
-function autocompleteAdresse(champ, boite, choisir) {
-  let resultats = [];
-  let actif = -1;
-  let minuterie = 0;
-  let requete = null;
-
-  const afficher = message => {
-    boite.innerHTML = resultats.length
-      ? resultats.map((r, k) => `
-          <li role="option" id="${boite.id}-${k}" data-k="${k}" aria-selected="${k === actif}">
-            <span class="suggestions__nom">${esc(r.libelle)}</span>
-            <span class="suggestions__detail">${esc(r.detail)}</span>
-          </li>`).join('')
-      : message ? `<li class="suggestions__message" role="presentation">${esc(message)}</li>` : '';
-    boite.hidden = !boite.innerHTML;
-    champ.setAttribute('aria-expanded', String(!boite.hidden));
-    if (actif >= 0 && resultats.length) champ.setAttribute('aria-activedescendant', `${boite.id}-${actif}`);
-    else champ.removeAttribute('aria-activedescendant');
-  };
-  const selectionner = r => {
-    champ.value = r.libelle;
-    resultats = [];
-    afficher();
-    choisir(r);
-  };
-
-  champ.addEventListener('input', () => {
-    choisir(null);
-    clearTimeout(minuterie);
-    requete?.abort();
-    const q = champ.value.trim();
-    if (q.length < 3) {
-      resultats = [];
-      return afficher();
-    }
-    minuterie = setTimeout(async () => {
-      requete = new AbortController();
-      try {
-        resultats = await chercherAdresses(q, requete.signal);
-        actif = resultats.length ? 0 : -1;
-        afficher('Aucune adresse trouvée. Essayez avec le nom de la commune.');
-      } catch (e) {
-        if (e.name === 'AbortError') return;
-        resultats = [];
-        afficher('Recherche d’adresse impossible pour le moment. Vérifiez la connexion internet.');
-      }
-    }, 250);
-  });
-
-  champ.addEventListener('keydown', e => {
-    if (boite.hidden || !resultats.length) return;
-    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
-      e.preventDefault();
-      actif = (actif + (e.key === 'ArrowDown' ? 1 : -1) + resultats.length) % resultats.length;
-      afficher();
-    } else if (e.key === 'Enter') {
-      e.preventDefault();
-      if (resultats[actif]) selectionner(resultats[actif]);
-    } else if (e.key === 'Escape') {
-      e.preventDefault(); // ferme la liste sans fermer la fenêtre
-      resultats = [];
-      afficher();
-    }
-  });
-  champ.addEventListener('blur', () => {
-    resultats = [];
-    afficher();
-  });
-  boite.addEventListener('mousedown', e => {
-    e.preventDefault(); // garde le focus dans le champ
-    const li = e.target.closest('li[data-k]');
-    if (li) selectionner(resultats[Number(li.dataset.k)]);
-  });
 }
 
 // ─── Fenêtres ─────────────────────────────────────────────────────
@@ -267,7 +172,7 @@ function formulaireTechnicien(t) {
       autocompleteAdresse(fenetre.querySelector('#f-depart'), fenetre.querySelector('#f-depart-liste'), choix => {
         position = choix;
         decrire();
-      });
+      }, () => centreDepartement);
     },
     async valider(formulaire) {
       const f = new FormData(formulaire);
@@ -379,6 +284,12 @@ const ACTIONS = {
         annoncer(`Fiche de ${t.nom} supprimée.`);
       },
     });
+  },
+  'annuler-position': async id => {
+    const t = trouver(D.techniciens, id);
+    await api(`/api/techniciens/${id}/position`, { methode: 'DELETE' });
+    await recharger();
+    annoncer(`${t.nom} repart de son point de départ habituel.`);
   },
   'ajouter-absence': () => formulaireAbsence(),
   'supprimer-absence': id => {
