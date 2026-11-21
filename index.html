@@ -28,7 +28,7 @@
     <header class="entete">
       <p id="surtitre" class="surtitre">Régulation</p>
       <h1>Qui appeler&nbsp;?</h1>
-      <p class="chapo">Choisissez la commune du client et le type d'intervention. Les techniciens disponibles sont classés par distance par la route.</p>
+      <p class="chapo">Choisissez la commune du client, la nature de la visite (dépannage ou entretien) et le type d'intervention. Les techniciens disponibles sont classés par distance par la route.</p>
     </header>
 
     <div class="criteres">
@@ -40,6 +40,15 @@
                  role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="suggestions">
           <button id="effacer" class="effacer" type="button" aria-label="Effacer la commune" hidden>×</button>
           <ul id="suggestions" class="suggestions" role="listbox" aria-label="Communes proposées" hidden></ul>
+        </div>
+      </div>
+      <div class="champ">
+        <label for="mode">Nature de la visite</label>
+        <div class="choix">
+          <select id="mode" autocomplete="off">
+            <option value="depannage">Dépannage</option>
+            <option value="entretien">Entretien</option>
+          </select>
         </div>
       </div>
       <div class="champ">

@@ -75,10 +75,11 @@ function rendreTechniciens() {
     <tr>
       <td class="tableau__titre"><span class="tableau__nom">${esc(t.nom)}</span>${t.tel ? `<a class="tableau__detail" href="tel:${esc(t.tel.replace(/[^\d+]/g, ''))}">${esc(t.tel)}</a>` : ''}</td>
       ${cellule('Point de départ', `${esc(t.ville)}${t.adresse ? `<span class="tableau__detail">${esc(t.adresse)}</span>` : ''}`)}
-      ${cellule('Interventions', puces(t.interventions))}
+      ${cellule('Dépannage', puces(t.depannage))}
+      ${cellule('Entretien', puces(t.entretien))}
       ${cellule('Disponibilité', disponibilite(t))}
       ${actions(bouton('modifier-technicien', t.id, 'Modifier'), bouton('supprimer-technicien', t.id, 'Supprimer', true))}
-    </tr>`).join('') || ligneVide(5, 'Aucun technicien. Ajoutez le premier avec le bouton « Ajouter un technicien ».');
+    </tr>`).join('') || ligneVide(6, 'Aucun technicien. Ajoutez le premier avec le bouton « Ajouter un technicien ».');
 }
 
 function rendreAbsences() {
@@ -100,15 +101,20 @@ function rendreAbsences() {
 
 function rendreInterventions() {
   $('corps-interventions').innerHTML = D.interventions.map(x => {
-    const n = D.techniciens.filter(t => t.interventions.includes(x.id)).length;
+    const compter = cle => {
+      const n = D.techniciens.filter(t => t[cle].includes(x.id)).length;
+      return n ? pluriel(n, 'technicien') : '<span class="statut statut--absent">Aucun</span>';
+    };
     return `
     <tr>
       <td class="tableau__titre"><span class="puce puce--grande">${esc(x.court)}</span></td>
       ${cellule('Libellé', esc(x.nom))}
-      ${cellule('Techniciens qui la font', n ? pluriel(n, 'technicien') : '<span class="statut statut--absent">Aucun</span>')}
+      ${cellule('Durée d’un entretien', x.duree ? esc(x.duree) : '<span class="tableau__detail">Non précisée</span>')}
+      ${cellule('En dépannage', compter('depannage'))}
+      ${cellule('En entretien', compter('entretien'))}
       ${actions(bouton('modifier-intervention', x.id, 'Modifier'), bouton('supprimer-intervention', x.id, 'Supprimer', true))}
     </tr>`;
-  }).join('') || ligneVide(4, 'Aucun type d’intervention. Ajoutez le premier avec le bouton « Ajouter un type ».');
+  }).join('') || ligneVide(6, 'Aucun type d’intervention. Ajoutez le premier avec le bouton « Ajouter un type ».');
 }
 
 function toutRendre() {
@@ -221,8 +227,13 @@ function autocompleteAdresse(champ, boite, choisir) {
 // ─── Fenêtres ─────────────────────────────────────────────────────
 function formulaireTechnicien(t) {
   let position = t ? { ville: t.ville, adresse: t.adresse, lat: t.lat, lon: t.lon } : null;
-  const cases = D.interventions.map(x => `
-    <label class="case"><input type="checkbox" name="interventions" value="${esc(x.id)}"${t?.interventions.includes(x.id) ? ' checked' : ''}> ${esc(x.nom)}</label>`).join('');
+  const cases = nom => D.interventions.map(x => `
+    <label class="case"><input type="checkbox" name="${nom}" value="${esc(x.id)}"${t?.[nom].includes(x.id) ? ' checked' : ''}> ${esc(x.nom)}</label>`).join('');
+  const groupe = (nom, titre) => `
+      <fieldset class="cases">
+        <legend>${titre}</legend>
+        ${D.interventions.length ? `<div class="cases__liste">${cases(nom)}</div>` : '<p class="aide">Aucun type d’intervention : créez-en d’abord dans la rubrique « Interventions ».</p>'}
+      </fieldset>`;
   ouvrirFenetre({
     titre: t ? `Modifier la fiche de ${t.nom}` : 'Nouveau technicien',
     corps: `
@@ -243,10 +254,8 @@ function formulaireTechnicien(t) {
         </div>
         <p id="f-position" class="aide"></p>
       </div>
-      <fieldset class="cases">
-        <legend>Interventions</legend>
-        ${cases ? `<div class="cases__liste">${cases}</div>` : '<p class="aide">Aucun type d’intervention : créez-en d’abord dans la rubrique « Types d’intervention ».</p>'}
-      </fieldset>`,
+      ${groupe('depannage', 'Fait en dépannage')}
+      ${groupe('entretien', 'Fait en entretien')}`,
     apresOuverture(fenetre) {
       const aide = fenetre.querySelector('#f-position');
       const decrire = () => {
@@ -265,7 +274,7 @@ function formulaireTechnicien(t) {
       if (!position) throw new Error('Point de départ : choisissez une adresse ou une commune dans la liste proposée.');
       await api(t ? `/api/techniciens/${t.id}` : '/api/techniciens', {
         methode: t ? 'PUT' : 'POST',
-        corps: { nom: f.get('nom'), tel: f.get('tel'), ...position, interventions: f.getAll('interventions') },
+        corps: { nom: f.get('nom'), tel: f.get('tel'), ...position, depannage: f.getAll('depannage'), entretien: f.getAll('entretien') },
       });
       await recharger();
       annoncer(t ? `Fiche de ${f.get('nom')} enregistrée.` : `Fiche de ${f.get('nom')} créée.`);
@@ -330,12 +339,17 @@ function formulaireIntervention(x) {
         <label for="f-libelle">Libellé</label>
         <input id="f-libelle" name="nom" maxlength="60" required value="${esc(x?.nom)}" placeholder="ex. Climatisation">
         <p class="aide">Affiché dans le menu « Type d’intervention » de la régulation.</p>
+      </div>
+      <div class="champ">
+        <label for="f-duree">Durée d’un entretien <span class="facultatif">(facultatif)</span></label>
+        <input id="f-duree" name="duree" maxlength="60" value="${esc(x?.duree)}" placeholder="ex. 1 h 30">
+        <p class="aide">Affichée dans la régulation quand la nature de la visite est « Entretien ».</p>
       </div>`,
     async valider(formulaire) {
       const f = new FormData(formulaire);
       await api(x ? `/api/interventions/${x.id}` : '/api/interventions', {
         methode: x ? 'PUT' : 'POST',
-        corps: { court: f.get('court'), nom: f.get('nom') },
+        corps: { court: f.get('court'), nom: f.get('nom'), duree: f.get('duree') },
       });
       await recharger();
       annoncer(x ? 'Type d’intervention modifié.' : 'Type d’intervention ajouté.');
@@ -384,7 +398,7 @@ const ACTIONS = {
   'modifier-intervention': id => formulaireIntervention(trouver(D.interventions, id)),
   'supprimer-intervention': id => {
     const x = trouver(D.interventions, id);
-    const n = D.techniciens.filter(t => t.interventions.includes(id)).length;
+    const n = D.techniciens.filter(t => t.depannage.includes(id) || t.entretien.includes(id)).length;
     confirmer({
       titre: `Supprimer « ${x.nom} » ?`,
       texte: `Ce type disparaîtra du menu de la régulation${n ? ` et des fiches de ${pluriel(n, 'technicien')}` : ''}.`,

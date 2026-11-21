@@ -11,6 +11,7 @@ let D = donneesServeur; // paramètres, interventions, techniciens, absences
 const champ = $('commune');
 const boutonEffacer = $('effacer');
 const boiteSugg = $('suggestions');
+const choixMode = $('mode');
 const choixType = $('intervention');
 const blocClassement = $('classement');
 const liste = $('liste');
@@ -23,8 +24,14 @@ const lieu = $('classement-lieu');
 function afficherEntete() {
   barre({ moi, entreprise: D.parametres.entreprise, page: 'regulation' });
   document.title = `Régulation · ${D.parametres.entreprise}`;
-  $('surtitre').textContent = `Régulation · ${D.parametres.departementNom} (${D.parametres.departement})`;
+  $('surtitre').textContent = `${modeActuel()} · ${D.parametres.departementNom} (${D.parametres.departement})`;
 }
+// ─── Nature de la visite ──────────────────────────────────────────
+// Chaque technicien a deux listes de compétences : une pour le dépannage, une pour l'entretien.
+const MODES = { depannage: 'Dépannage', entretien: 'Entretien' };
+const modeActuel = () => MODES[choixMode.value] ?? MODES.depannage;
+const competences = t => t[choixMode.value] ?? t.depannage ?? [];
+
 afficherEntete();
 
 // ─── Outils ───────────────────────────────────────────────────────
@@ -59,13 +66,16 @@ function etat(texte, alerte = false) {
 }
 
 // ─── Interventions et disponibilité ───────────────────────────────
-const fait = (t, type) => !type || t.interventions.includes(type);
+const fait = (t, type) => !type || competences(t).includes(type);
 const absenceEnCours = (t, jour) => D.absences.find(a => a.technicien === t.id && a.du <= jour && jour <= a.au) || null;
 
 function remplirTypes() {
   const choisi = choixType.value;
   choixType.innerHTML = '<option value="">Tous types d’intervention</option>'
-    + D.interventions.map(x => `<option value="${esc(x.id)}">${esc(x.nom)}</option>`).join('');
+    + D.interventions.map(x => {
+      const duree = choixMode.value === 'entretien' && x.duree ? ` · ${x.duree}` : '';
+      return `<option value="${esc(x.id)}">${esc(x.nom)}${esc(duree)}</option>`;
+    }).join('');
   choixType.value = D.interventions.some(x => x.id === choisi) ? choisi : '';
 }
 
@@ -222,7 +232,7 @@ function classer() {
 // ─── Classement ───────────────────────────────────────────────────
 function puces(t) {
   const html = D.interventions
-    .filter(x => t.interventions.includes(x.id))
+    .filter(x => competences(t).includes(x.id))
     .map(x => `<span class="puce${x.id === etatPage.type ? ' puce--choisie' : ''}">${esc(x.court)}</span>`)
     .join('');
   return html ? `<span class="puces">${html}</span>` : '';
@@ -260,7 +270,7 @@ function ligneIndispo(l) {
   const intervention = D.interventions.find(x => x.id === etatPage.type);
   const raison = l.absence
     ? `Absent jusqu’au ${fmtDate(l.absence.au)}${l.absence.motif ? ` · ${l.absence.motif}` : ''}`
-    : `Ne fait pas : ${intervention?.court ?? ''}`;
+    : `Ne fait pas : ${intervention?.court ?? ''} (${modeActuel().toLowerCase()})`;
   return `<li class="indispo" data-id="${esc(l.id)}">
     <span class="indispo__nom">${esc(l.t.nom)}</span>
     <span class="indispo__base">${esc(l.t.ville)}</span>
@@ -272,6 +282,9 @@ function rendreListe() {
   const classement = classer();
   const { client, type, trajets, service, chargement } = etatPage;
   const intervention = D.interventions.find(x => x.id === type);
+  const enMode = `en ${modeActuel().toLowerCase()}`;
+  const duree = choixMode.value === 'entretien' && intervention?.duree ? ` Durée prévue pour l’entretien : ${intervention.duree}.` : '';
+  $('surtitre').textContent = `${modeActuel()} · ${D.parametres.departementNom} (${D.parametres.departement})`;
 
   surtitreClassement.textContent = client ? 'Client' : 'Vos techniciens';
   lieu.hidden = !client;
@@ -290,16 +303,16 @@ function rendreListe() {
       : 'Aucun technicien enregistré. Demandez à un administrateur de les ajouter.', true);
   } else if (!classement.dispos.length) {
     etat(intervention
-      ? `Aucun technicien disponible aujourd’hui pour « ${intervention.nom} ».`
+      ? `Aucun technicien disponible aujourd’hui pour « ${intervention.nom} » ${enMode}.`
       : 'Aucun technicien disponible aujourd’hui.', true);
   } else if (chargement) {
     etat('Calcul des itinéraires…');
   } else if (trajets && service) {
-    etat(`Distances et temps par la route jusqu’à la mairie de la commune, sans trafic (calcul ${service}).`);
+    etat(`Distances et temps par la route jusqu’à la mairie de la commune, sans trafic (calcul ${service}).${duree}`);
   } else if (trajets) {
     etat('Le calcul d’itinéraire ne répond pas : distances à vol d’oiseau. Vérifiez la connexion internet puis appuyez sur Entrée dans le champ pour relancer.', true);
   } else if (intervention) {
-    etat(`${techniciensDisponibles(classement.dispos.length)} pour « ${intervention.nom} ». Choisissez la commune du client pour les classer.`);
+    etat(`${techniciensDisponibles(classement.dispos.length)} pour « ${intervention.nom} » ${enMode}. Choisissez la commune du client pour les classer.${duree}`);
   } else {
     etat('');
   }
@@ -574,6 +587,11 @@ function reinitialiser() {
   cadrerDepartement();
   champ.focus();
 }
+
+choixMode.addEventListener('change', () => {
+  remplirTypes();
+  afficher({ cadrer: true });
+});
 
 choixType.addEventListener('change', () => {
   etatPage.type = choixType.value;

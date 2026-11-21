@@ -21,7 +21,7 @@ html, body { height: 100%; }
 .entete { display: grid; gap: 6px; }
 .chapo { margin: 2px 0 0; color: var(--muted); max-width: 38ch; }
 .criteres { display: grid; gap: 14px; }
-#commune, #intervention { font-size: 18px; padding-block: 11px; }
+#commune, #mode, #intervention { font-size: 18px; padding-block: 11px; }
 #commune { padding-right: 46px; }
 .effacer {
   position: absolute; top: 50%; right: 8px; transform: translateY(-50%);

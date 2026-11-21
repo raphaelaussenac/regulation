@@ -25,18 +25,18 @@ const copie = objet => JSON.parse(JSON.stringify(objet));
 // ─── Données ──────────────────────────────────────────────────────────
 // Premier lancement : les techniciens et interventions d'exemple, à remplacer depuis la page Gestion.
 function donneesInitiales() {
-  const tech = (nom, ville, lat, lon, interventions) =>
-    ({ id: nouvelId('t'), nom, tel: '', ville, adresse: '', lat, lon, interventions });
+  const tech = (nom, ville, lat, lon, competences) =>
+    ({ id: nouvelId('t'), nom, tel: '', ville, adresse: '', lat, lon, depannage: competences, entretien: [...competences] });
   return {
-    version: 1,
+    version: 2,
     parametres: { entreprise: 'Dépannage Hérault', departement: '34', departementNom: 'Hérault' },
     interventions: [
-      { id: 'chaudiere', court: 'Chaudière', nom: 'Dépannage chaudière' },
-      { id: 'vmc', court: 'VMC', nom: 'VMC' },
-      { id: 'plancher', court: 'Plancher', nom: 'Plancher chauffant' },
-      { id: 'pac', court: 'PAC', nom: 'Pompe à chaleur' },
-      { id: 'clim', court: 'Clim', nom: 'Climatisation' },
-      { id: 'chauffe-eau', court: 'Chauffe-eau', nom: 'Chauffe-eau' },
+      { id: 'chaudiere', court: 'Chaudière', nom: 'Chaudière', duree: '1 h' },
+      { id: 'vmc', court: 'VMC', nom: 'VMC', duree: '' },
+      { id: 'plancher', court: 'Plancher', nom: 'Plancher chauffant', duree: '' },
+      { id: 'pac', court: 'PAC', nom: 'Pompe à chaleur', duree: '1 h 30' },
+      { id: 'clim', court: 'Clim', nom: 'Climatisation', duree: '1 h' },
+      { id: 'chauffe-eau', court: 'Chauffe-eau', nom: 'Chauffe-eau', duree: '' },
     ],
     techniciens: [
       tech('Coco', 'Montpellier', 43.6085, 3.8796, ['chaudiere', 'vmc', 'pac', 'clim']),
@@ -71,11 +71,23 @@ function lire() {
     return d;
   }
   try {
-    return JSON.parse(brut);
+    return migrer(JSON.parse(brut));
   } catch {
     // Des données présentes mais illisibles ne sont jamais écrasées.
     refuser('Les données enregistrées sur ce téléphone sont illisibles. Restaurez une sauvegarde depuis Gestion › Sauvegarde.');
   }
+}
+
+// Données d'une version antérieure : une seule liste « interventions » par technicien,
+// reprise à l'identique pour le dépannage et pour l'entretien.
+function migrer(d) {
+  for (const t of d.techniciens ?? []) {
+    if (!Array.isArray(t.depannage)) t.depannage = Array.isArray(t.interventions) ? t.interventions : [];
+    if (!Array.isArray(t.entretien)) t.entretien = [...t.depannage];
+    delete t.interventions;
+  }
+  for (const x of d.interventions ?? []) x.duree ??= '';
+  return d;
 }
 
 function enregistrer(d) {
@@ -300,6 +312,7 @@ function lireIntervention(d, corps, id) {
   const intervention = {
     court: texte(corps.court, 'Étiquette courte', { max: 20 }),
     nom: texte(corps.nom, 'Libellé', { max: 60 }),
+    duree: texte(corps.duree, 'Durée d’un entretien', { max: 60, requis: false }),
   };
   const doublon = d.interventions.find(i => i.id !== id && i.court.toLowerCase() === intervention.court.toLowerCase());
   if (doublon) refuser(`L’étiquette « ${doublon.court} » existe déjà.`);
@@ -326,7 +339,10 @@ route('DELETE', '/api/interventions/:id', ({ params }) => {
   const d = lire();
   trouver(d.interventions, params.id, 'Type d’intervention');
   d.interventions = d.interventions.filter(i => i.id !== params.id);
-  for (const t of d.techniciens) t.interventions = t.interventions.filter(id => id !== params.id);
+  for (const t of d.techniciens) {
+    t.depannage = t.depannage.filter(id => id !== params.id);
+    t.entretien = t.entretien.filter(id => id !== params.id);
+  }
   enregistrer(d);
 });
 
@@ -336,6 +352,10 @@ function lireTechnicien(d, corps) {
     refuser('Point de départ : choisissez une adresse ou une commune dans la liste proposée.');
   }
   const connues = new Set(d.interventions.map(i => i.id));
+  const liste = valeur => (Array.isArray(valeur) ? [...new Set(valeur)].filter(id => connues.has(id)) : []);
+  // Ancien format : une seule liste « interventions », valable pour les deux natures de visite.
+  const depannage = corps.depannage ?? corps.interventions;
+  const entretien = corps.entretien ?? corps.interventions;
   return {
     nom: texte(corps.nom, 'Nom', { max: 60 }),
     tel: texte(corps.tel, 'Téléphone', { max: 30, requis: false }),
@@ -343,7 +363,8 @@ function lireTechnicien(d, corps) {
     adresse: texte(corps.adresse, 'Adresse de départ', { max: 200, requis: false }),
     lat: nombre(corps.lat, 'Latitude', -90, 90),
     lon: nombre(corps.lon, 'Longitude', -180, 180),
-    interventions: Array.isArray(corps.interventions) ? [...new Set(corps.interventions)].filter(id => connues.has(id)) : [],
+    depannage: liste(depannage),
+    entretien: liste(entretien),
   };
 }
 
@@ -419,7 +440,7 @@ export function exporter() {
   ecrireCle(CLE_SAUVEGARDE, quand.toISOString());
   return {
     format: 'depannage-sauvegarde',
-    version: 1,
+    version: 2,
     date: quand.toISOString(),
     donnees: { parametres: d.parametres, interventions: d.interventions, techniciens: d.techniciens, absences: d.absences },
   };
@@ -442,9 +463,10 @@ export function importer(objet) {
       id: texte(x.id, 'Identifiant d’intervention', { max: 40 }),
       court: texte(x.court, 'Étiquette courte', { max: 20 }),
       nom: texte(x.nom, 'Libellé', { max: 60 }),
+      duree: texte(x.duree, 'Durée d’un entretien', { max: 60, requis: false }),
     }));
     const d = {
-      version: 1,
+      version: 2,
       parametres: {
         entreprise: texte(p.entreprise, 'Nom de l’entreprise', { max: 80 }),
         departement: texte(p.departement, 'Département', { max: 3 }).toUpperCase(),

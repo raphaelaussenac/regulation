@@ -2,7 +2,7 @@
 // En ligne, chaque fichier est redemandé au site (les mises à jour arrivent tout de suite) ;
 // sans réseau, la copie gardée sert. Les cartes, communes et itinéraires ne passent pas par ici.
 // Changer VERSION à chaque mise à jour pour renouveler la copie.
-const VERSION = '2026-11-21';
+const VERSION = '2026-11-21-b';
 const CACHE = `depannage-${VERSION}`;
 const FICHIERS = [
   './',

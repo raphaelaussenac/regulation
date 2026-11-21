@@ -1,9 +1,9 @@
 # Régulation des techniciens : version iPhone
 
-Une application web qui s'installe sur l'écran d'accueil de l'iPhone. Quand un client appelle, vous choisissez sa commune et le type d'intervention : les techniciens disponibles sont classés par distance par la route.
+Une application web qui s'installe sur l'écran d'accueil de l'iPhone. Quand un client appelle, vous choisissez sa commune, la nature de la visite (dépannage ou entretien) et le type d'intervention : les techniciens disponibles sont classés par distance par la route.
 
 - **Régulation** : carte, classement des techniciens, trajets, appel du technicien d'un toucher.
-- **Gestion** : techniciens et leur point de départ, absences, types d'intervention, nom de l'entreprise et département, sauvegarde.
+- **Gestion** : techniciens, leur point de départ et ce qu'ils font en dépannage et en entretien, absences, types d'intervention et durée d'un entretien, nom de l'entreprise et département, sauvegarde.
 
 ## Où sont les données ?
 
